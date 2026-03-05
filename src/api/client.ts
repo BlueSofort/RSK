@@ -27,6 +27,12 @@ const redirectToLogin = () => {
   window.location.href = `${ADMIN_PATH}/login`
 }
 
+const isLoginEndpoint = (url?: string) => {
+  if (!url) return false
+  const path = url.replace(/^https?:\/\/[^/]+/, '')
+  return /\/admin\/login\b/.test(path)
+}
+
 export const api = axios.create({
   baseURL: `${API_BASE_URL}${API_PREFIX}`,
   timeout: 10000,
@@ -54,7 +60,7 @@ api.interceptors.response.use(
     if (typeof data.status_code !== 'undefined' && data.status_code !== 0) {
       const fallbackMessage = t('common.api.requestFailed')
       const message = data.msg || fallbackMessage
-      if (data.status_code === 401) {
+      if (data.status_code === 401 && !isLoginEndpoint(response.config.url)) {
         notifyError(message)
         redirectToLogin()
         return Promise.reject(createNotifiedError(message))
@@ -71,7 +77,9 @@ api.interceptors.response.use(
       switch (status) {
         case 401:
           message = t('common.api.unauthorized')
-          redirectToLogin()
+          if (!isLoginEndpoint(error.config?.url)) {
+            redirectToLogin()
+          }
           break
         case 403:
           message = t('common.api.forbidden')
