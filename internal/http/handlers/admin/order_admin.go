@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/http/response"
 	"github.com/dujiao-next/internal/models"
 	"github.com/dujiao-next/internal/repository"
@@ -34,7 +35,7 @@ type AdminOrderDetail struct {
 func (h *Handler) AdminListOrders(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	page, pageSize = normalizePagination(page, pageSize)
+	page, pageSize = shared.NormalizePagination(page, pageSize)
 
 	status := strings.TrimSpace(c.Query("status"))
 	userIDStr := strings.TrimSpace(c.Query("user_id"))
@@ -43,14 +44,14 @@ func (h *Handler) AdminListOrders(c *gin.Context) {
 	createdFromRaw := strings.TrimSpace(c.Query("created_from"))
 	createdToRaw := strings.TrimSpace(c.Query("created_to"))
 
-	createdFrom, err := parseTimeNullable(createdFromRaw)
+	createdFrom, err := shared.ParseTimeNullable(createdFromRaw)
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
-	createdTo, err := parseTimeNullable(createdToRaw)
+	createdTo, err := shared.ParseTimeNullable(createdToRaw)
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 	var userID uint
@@ -71,7 +72,7 @@ func (h *Handler) AdminListOrders(c *gin.Context) {
 		CreatedTo:   createdTo,
 	})
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.order_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.order_fetch_failed", err)
 		return
 	}
 
@@ -92,7 +93,7 @@ func (h *Handler) AdminListOrders(c *gin.Context) {
 	if len(userIDs) > 0 {
 		users, err := h.UserRepo.ListByIDs(userIDs)
 		if err != nil {
-			respondError(c, response.CodeInternal, "error.order_fetch_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.order_fetch_failed", err)
 			return
 		}
 		for _, user := range users {
@@ -121,7 +122,7 @@ func (h *Handler) AdminListOrders(c *gin.Context) {
 func (h *Handler) AdminGetOrder(c *gin.Context) {
 	orderID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil || orderID == 0 {
-		respondError(c, response.CodeBadRequest, "error.order_item_invalid", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.order_item_invalid", nil)
 		return
 	}
 
@@ -129,9 +130,9 @@ func (h *Handler) AdminGetOrder(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrOrderNotFound):
-			respondError(c, response.CodeNotFound, "error.order_not_found", nil)
+			shared.RespondError(c, response.CodeNotFound, "error.order_not_found", nil)
 		default:
-			respondError(c, response.CodeInternal, "error.order_fetch_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.order_fetch_failed", err)
 		}
 		return
 	}
@@ -139,7 +140,7 @@ func (h *Handler) AdminGetOrder(c *gin.Context) {
 	if order.UserID != 0 {
 		user, err := h.UserRepo.GetByID(order.UserID)
 		if err != nil {
-			respondError(c, response.CodeInternal, "error.order_fetch_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.order_fetch_failed", err)
 			return
 		}
 		if user != nil {
@@ -152,7 +153,7 @@ func (h *Handler) AdminGetOrder(c *gin.Context) {
 	if order.CouponID != nil && *order.CouponID > 0 {
 		coupon, err := h.CouponRepo.GetByID(*order.CouponID)
 		if err != nil {
-			respondError(c, response.CodeInternal, "error.order_fetch_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.order_fetch_failed", err)
 			return
 		}
 		if coupon != nil {
@@ -164,7 +165,7 @@ func (h *Handler) AdminGetOrder(c *gin.Context) {
 	if order.PromotionID != nil && *order.PromotionID > 0 {
 		promotion, err := h.PromotionRepo.GetByID(*order.PromotionID)
 		if err != nil {
-			respondError(c, response.CodeInternal, "error.order_fetch_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.order_fetch_failed", err)
 			return
 		}
 		if promotion != nil {
@@ -184,7 +185,7 @@ func (h *Handler) AdminGetOrder(c *gin.Context) {
 		}
 		promotion, err := h.PromotionRepo.GetByID(promotionID)
 		if err != nil {
-			respondError(c, response.CodeInternal, "error.order_fetch_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.order_fetch_failed", err)
 			return
 		}
 		if promotion != nil {
@@ -204,7 +205,7 @@ func (h *Handler) AdminGetOrder(c *gin.Context) {
 			}
 			promotion, err := h.PromotionRepo.GetByID(promotionID)
 			if err != nil {
-				respondError(c, response.CodeInternal, "error.order_fetch_failed", err)
+				shared.RespondError(c, response.CodeInternal, "error.order_fetch_failed", err)
 				return
 			}
 			if promotion != nil {
@@ -233,12 +234,12 @@ func (h *Handler) AdminGetOrder(c *gin.Context) {
 
 	payments, err := h.PaymentRepo.ListByOrderID(order.ID)
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.order_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.order_fetch_failed", err)
 		return
 	}
 	channelNameMap, err := h.resolvePaymentChannelNames(payments)
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.order_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.order_fetch_failed", err)
 		return
 	}
 	paymentItems := make([]AdminPaymentItem, 0, len(payments))
@@ -268,13 +269,13 @@ type AdminUpdateOrderStatusRequest struct {
 func (h *Handler) AdminUpdateOrderStatus(c *gin.Context) {
 	orderID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil || orderID == 0 {
-		respondError(c, response.CodeBadRequest, "error.order_item_invalid", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.order_item_invalid", nil)
 		return
 	}
 
 	var req AdminUpdateOrderStatusRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
@@ -282,11 +283,11 @@ func (h *Handler) AdminUpdateOrderStatus(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrOrderNotFound):
-			respondError(c, response.CodeNotFound, "error.order_not_found", nil)
+			shared.RespondError(c, response.CodeNotFound, "error.order_not_found", nil)
 		case errors.Is(err, service.ErrOrderStatusInvalid):
-			respondError(c, response.CodeBadRequest, "error.order_status_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.order_status_invalid", nil)
 		default:
-			respondError(c, response.CodeInternal, "error.order_update_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.order_update_failed", err)
 		}
 		return
 	}

@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/http/response"
 	"github.com/dujiao-next/internal/logger"
 	"github.com/dujiao-next/internal/models"
@@ -29,19 +30,19 @@ type authzSetAdminRolesPayload struct {
 
 // GetAuthzMe 获取当前管理员权限快照
 func (h *Handler) GetAuthzMe(c *gin.Context) {
-	adminID, ok := getAdminID(c)
+	adminID, ok := shared.GetAdminID(c)
 	if !ok {
 		return
 	}
 
 	roles, err := h.AuthzService.GetAdminRoles(adminID)
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.config_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.config_fetch_failed", err)
 		return
 	}
 	policies, err := h.AuthzService.GetAdminPolicies(adminID)
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.config_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.config_fetch_failed", err)
 		return
 	}
 
@@ -64,7 +65,7 @@ func (h *Handler) GetAuthzMe(c *gin.Context) {
 func (h *Handler) ListAuthzRoles(c *gin.Context) {
 	roles, err := h.AuthzService.ListRoles()
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.config_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.config_fetch_failed", err)
 		return
 	}
 	response.Success(c, roles)
@@ -74,7 +75,7 @@ func (h *Handler) ListAuthzRoles(c *gin.Context) {
 func (h *Handler) ListAuthzAdmins(c *gin.Context) {
 	admins, err := h.AdminRepo.List()
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.config_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.config_fetch_failed", err)
 		return
 	}
 
@@ -82,7 +83,7 @@ func (h *Handler) ListAuthzAdmins(c *gin.Context) {
 	for _, admin := range admins {
 		roles, roleErr := h.AuthzService.GetAdminRoles(admin.ID)
 		if roleErr != nil {
-			respondError(c, response.CodeInternal, "error.config_fetch_failed", roleErr)
+			shared.RespondError(c, response.CodeInternal, "error.config_fetch_failed", roleErr)
 			return
 		}
 		items = append(items, gin.H{
@@ -102,13 +103,13 @@ func (h *Handler) ListAuthzAdmins(c *gin.Context) {
 func (h *Handler) CreateAuthzRole(c *gin.Context) {
 	var req authzRolePayload
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
 	role, err := h.AuthzService.EnsureRole(req.Role)
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
@@ -135,12 +136,12 @@ func (h *Handler) CreateAuthzRole(c *gin.Context) {
 func (h *Handler) DeleteAuthzRole(c *gin.Context) {
 	role := decodeRoleParam(c.Param("role"))
 	if strings.TrimSpace(role) == "" {
-		respondError(c, response.CodeBadRequest, "error.bad_request", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", nil)
 		return
 	}
 
 	if err := h.AuthzService.DeleteRole(role); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
@@ -167,13 +168,13 @@ func (h *Handler) DeleteAuthzRole(c *gin.Context) {
 func (h *Handler) GetAuthzRolePolicies(c *gin.Context) {
 	role := decodeRoleParam(c.Param("role"))
 	if strings.TrimSpace(role) == "" {
-		respondError(c, response.CodeBadRequest, "error.bad_request", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", nil)
 		return
 	}
 
 	policies, err := h.AuthzService.GetRolePolicies(role)
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 	response.Success(c, policies)
@@ -183,12 +184,12 @@ func (h *Handler) GetAuthzRolePolicies(c *gin.Context) {
 func (h *Handler) GrantAuthzPolicy(c *gin.Context) {
 	var req authzPolicyPayload
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
 	if err := h.AuthzService.GrantRolePolicy(req.Role, req.Object, req.Action); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
@@ -221,12 +222,12 @@ func (h *Handler) GrantAuthzPolicy(c *gin.Context) {
 func (h *Handler) RevokeAuthzPolicy(c *gin.Context) {
 	var req authzPolicyPayload
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
 	if err := h.AuthzService.RevokeRolePolicy(req.Role, req.Object, req.Action); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
@@ -262,13 +263,13 @@ func (h *Handler) GetAuthzAdminRoles(c *gin.Context) {
 		return
 	}
 	if _, err := h.AdminRepo.GetByID(adminID); err != nil {
-		respondError(c, response.CodeInternal, "error.config_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.config_fetch_failed", err)
 		return
 	}
 
 	roles, err := h.AuthzService.GetAdminRoles(adminID)
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.config_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.config_fetch_failed", err)
 		return
 	}
 	response.Success(c, roles)
@@ -282,22 +283,22 @@ func (h *Handler) SetAuthzAdminRoles(c *gin.Context) {
 	}
 	admin, err := h.AdminRepo.GetByID(adminID)
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.save_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.save_failed", err)
 		return
 	}
 	if admin == nil {
-		respondError(c, response.CodeBadRequest, "error.admin_id_invalid", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.admin_id_invalid", nil)
 		return
 	}
 
 	var req authzSetAdminRolesPayload
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
 	if err := h.AuthzService.SetAdminRoles(adminID, req.Roles); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
@@ -343,7 +344,7 @@ func (h *Handler) recordAuthzAudit(c *gin.Context, input service.AuthzAuditRecor
 func parseAdminIDParam(c *gin.Context) (uint, bool) {
 	id, err := strconv.ParseUint(strings.TrimSpace(c.Param("id")), 10, 64)
 	if err != nil || id == 0 {
-		respondError(c, response.CodeBadRequest, "error.admin_id_invalid", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.admin_id_invalid", nil)
 		return 0, false
 	}
 	return uint(id), true

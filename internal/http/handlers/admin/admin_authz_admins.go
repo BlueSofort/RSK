@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dujiao-next/internal/cache"
+	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/http/response"
 	"github.com/dujiao-next/internal/i18n"
 	"github.com/dujiao-next/internal/logger"
@@ -35,28 +36,28 @@ type authzUpdateAdminPayload struct {
 func (h *Handler) CreateAuthzAdmin(c *gin.Context) {
 	var req authzCreateAdminPayload
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
 	username, err := normalizeAdminUsername(req.Username)
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.admin_username_invalid", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.admin_username_invalid", err)
 		return
 	}
 	password := strings.TrimSpace(req.Password)
 	if password == "" {
-		respondError(c, response.CodeBadRequest, "error.password_weak", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.password_weak", nil)
 		return
 	}
 
 	existing, err := h.AdminRepo.GetByUsername(username)
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.admin_create_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.admin_create_failed", err)
 		return
 	}
 	if existing != nil {
-		respondError(c, response.CodeBadRequest, "error.admin_username_exists", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.admin_username_exists", nil)
 		return
 	}
 
@@ -64,13 +65,13 @@ func (h *Handler) CreateAuthzAdmin(c *gin.Context) {
 		if respondAdminPasswordPolicyError(c, err) {
 			return
 		}
-		respondError(c, response.CodeBadRequest, "error.password_weak", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.password_weak", err)
 		return
 	}
 
 	hash, err := h.AuthService.HashPassword(password)
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.admin_create_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.admin_create_failed", err)
 		return
 	}
 
@@ -85,7 +86,7 @@ func (h *Handler) CreateAuthzAdmin(c *gin.Context) {
 		IsSuper:      isSuper,
 	}
 	if err := h.AdminRepo.Create(admin); err != nil {
-		respondError(c, response.CodeInternal, "error.admin_create_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.admin_create_failed", err)
 		return
 	}
 
@@ -124,17 +125,17 @@ func (h *Handler) UpdateAuthzAdmin(c *gin.Context) {
 
 	admin, err := h.AdminRepo.GetByID(adminID)
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.admin_update_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.admin_update_failed", err)
 		return
 	}
 	if admin == nil {
-		respondError(c, response.CodeBadRequest, "error.admin_id_invalid", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.admin_id_invalid", nil)
 		return
 	}
 
 	var req authzUpdateAdminPayload
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
@@ -143,17 +144,17 @@ func (h *Handler) UpdateAuthzAdmin(c *gin.Context) {
 	if req.Username != nil {
 		normalizedUsername, err := normalizeAdminUsername(*req.Username)
 		if err != nil {
-			respondError(c, response.CodeBadRequest, "error.admin_username_invalid", err)
+			shared.RespondError(c, response.CodeBadRequest, "error.admin_username_invalid", err)
 			return
 		}
 		if normalizedUsername != admin.Username {
 			existing, err := h.AdminRepo.GetByUsername(normalizedUsername)
 			if err != nil {
-				respondError(c, response.CodeInternal, "error.admin_update_failed", err)
+				shared.RespondError(c, response.CodeInternal, "error.admin_update_failed", err)
 				return
 			}
 			if existing != nil && existing.ID != admin.ID {
-				respondError(c, response.CodeBadRequest, "error.admin_username_exists", nil)
+				shared.RespondError(c, response.CodeBadRequest, "error.admin_username_exists", nil)
 				return
 			}
 			admin.Username = normalizedUsername
@@ -175,19 +176,19 @@ func (h *Handler) UpdateAuthzAdmin(c *gin.Context) {
 	if req.Password != nil {
 		password := strings.TrimSpace(*req.Password)
 		if password == "" {
-			respondError(c, response.CodeBadRequest, "error.password_weak", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.password_weak", nil)
 			return
 		}
 		if err := h.AuthService.ValidatePassword(password); err != nil {
 			if respondAdminPasswordPolicyError(c, err) {
 				return
 			}
-			respondError(c, response.CodeBadRequest, "error.password_weak", err)
+			shared.RespondError(c, response.CodeBadRequest, "error.password_weak", err)
 			return
 		}
 		hash, err := h.AuthService.HashPassword(password)
 		if err != nil {
-			respondError(c, response.CodeInternal, "error.admin_update_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.admin_update_failed", err)
 			return
 		}
 		admin.PasswordHash = hash
@@ -198,12 +199,12 @@ func (h *Handler) UpdateAuthzAdmin(c *gin.Context) {
 	}
 
 	if len(updatedFields) == 0 {
-		respondError(c, response.CodeBadRequest, "error.bad_request", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", nil)
 		return
 	}
 
 	if err := h.AdminRepo.Update(admin); err != nil {
-		respondError(c, response.CodeInternal, "error.admin_update_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.admin_update_failed", err)
 		return
 	}
 	_ = cache.SetAdminAuthState(c.Request.Context(), cache.BuildAdminAuthState(admin))
@@ -247,38 +248,38 @@ func (h *Handler) DeleteAuthzAdmin(c *gin.Context) {
 
 	admin, err := h.AdminRepo.GetByID(adminID)
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.admin_delete_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.admin_delete_failed", err)
 		return
 	}
 	if admin == nil {
-		respondError(c, response.CodeBadRequest, "error.admin_id_invalid", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.admin_id_invalid", nil)
 		return
 	}
 	if currentAdminID(c) == adminID {
-		respondError(c, response.CodeBadRequest, "error.admin_delete_self_forbidden", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.admin_delete_self_forbidden", nil)
 		return
 	}
 	if strings.EqualFold(strings.TrimSpace(admin.Username), protectedSuperAdminUsername) {
-		respondError(c, response.CodeBadRequest, "error.admin_delete_protected", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.admin_delete_protected", nil)
 		return
 	}
 
 	count, err := h.AdminRepo.Count()
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.admin_delete_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.admin_delete_failed", err)
 		return
 	}
 	if count <= 1 {
-		respondError(c, response.CodeBadRequest, "error.admin_delete_last_forbidden", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.admin_delete_last_forbidden", nil)
 		return
 	}
 
 	if err := h.AuthzService.SetAdminRoles(adminID, []string{}); err != nil {
-		respondError(c, response.CodeInternal, "error.admin_delete_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.admin_delete_failed", err)
 		return
 	}
 	if err := h.AdminRepo.Delete(adminID); err != nil {
-		respondError(c, response.CodeInternal, "error.admin_delete_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.admin_delete_failed", err)
 		return
 	}
 	_ = cache.DelAdminAuthState(c.Request.Context(), adminID)
@@ -329,9 +330,9 @@ func respondAdminPasswordPolicyError(c *gin.Context, err error) bool {
 		Args() []interface{}
 	}); ok {
 		msg := i18n.Sprintf(i18n.ResolveLocale(c), perr.Key(), perr.Args()...)
-		respondErrorWithMsg(c, response.CodeBadRequest, msg, nil)
+		shared.RespondErrorWithMsg(c, response.CodeBadRequest, msg, nil)
 		return true
 	}
-	respondError(c, response.CodeBadRequest, "error.password_weak", nil)
+	shared.RespondError(c, response.CodeBadRequest, "error.password_weak", nil)
 	return true
 }

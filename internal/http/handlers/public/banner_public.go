@@ -3,6 +3,7 @@ package public
 import (
 	"strconv"
 
+	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/http/response"
 
 	"github.com/gin-gonic/gin"
@@ -21,7 +22,7 @@ func (h *Handler) GetPublicBanners(c *gin.Context) {
 
 	banners, err := h.BannerService.ListPublic(position, limit)
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.banner_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.banner_fetch_failed", err)
 		return
 	}
 

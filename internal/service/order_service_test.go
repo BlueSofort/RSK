@@ -219,20 +219,12 @@ func TestBuildOrderResultRejectsZeroPromotionPrice(t *testing.T) {
 		t.Fatalf("create promotion failed: %v", err)
 	}
 
-	svc := NewOrderService(
-		nil,
-		repository.NewProductRepository(db),
-		repository.NewProductSKURepository(db),
-		nil,
-		nil,
-		nil,
-		repository.NewPromotionRepository(db),
-		nil,
-		nil,
-		nil,
-		nil,
-		15,
-	)
+	svc := NewOrderService(OrderServiceOptions{
+		ProductRepo:    repository.NewProductRepository(db),
+		ProductSKURepo: repository.NewProductSKURepository(db),
+		PromotionRepo:  repository.NewPromotionRepository(db),
+		ExpireMinutes:  15,
+	})
 
 	_, err = svc.buildOrderResult(orderCreateParams{
 		UserID: 1,
@@ -315,20 +307,12 @@ func TestBuildOrderResultOriginalAmountBeforePromotion(t *testing.T) {
 		t.Fatalf("create promotion failed: %v", err)
 	}
 
-	svc := NewOrderService(
-		nil,
-		repository.NewProductRepository(db),
-		repository.NewProductSKURepository(db),
-		nil,
-		nil,
-		nil,
-		repository.NewPromotionRepository(db),
-		nil,
-		nil,
-		nil,
-		nil,
-		15,
-	)
+	svc := NewOrderService(OrderServiceOptions{
+		ProductRepo:    repository.NewProductRepository(db),
+		ProductSKURepo: repository.NewProductSKURepository(db),
+		PromotionRepo:  repository.NewPromotionRepository(db),
+		ExpireMinutes:  15,
+	})
 
 	result, err := svc.buildOrderResult(orderCreateParams{
 		UserID: 1,
@@ -429,20 +413,14 @@ func TestBuildOrderResultRejectsZeroTotalAmountAfterCoupon(t *testing.T) {
 		t.Fatalf("create coupon failed: %v", err)
 	}
 
-	svc := NewOrderService(
-		nil,
-		repository.NewProductRepository(db),
-		repository.NewProductSKURepository(db),
-		nil,
-		repository.NewCouponRepository(db),
-		repository.NewCouponUsageRepository(db),
-		repository.NewPromotionRepository(db),
-		nil,
-		nil,
-		nil,
-		nil,
-		15,
-	)
+	svc := NewOrderService(OrderServiceOptions{
+		ProductRepo:     repository.NewProductRepository(db),
+		ProductSKURepo:  repository.NewProductSKURepository(db),
+		CouponRepo:      repository.NewCouponRepository(db),
+		CouponUsageRepo: repository.NewCouponUsageRepository(db),
+		PromotionRepo:   repository.NewPromotionRepository(db),
+		ExpireMinutes:   15,
+	})
 
 	_, err = svc.buildOrderResult(orderCreateParams{
 		UserID:     1,

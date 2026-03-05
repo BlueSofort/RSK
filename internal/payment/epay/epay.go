@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/dujiao-next/internal/constants"
+	"github.com/dujiao-next/internal/payment/common"
 )
 
 const (
@@ -90,19 +91,7 @@ type CreateResult struct {
 
 // ParseConfig 解析配置
 func ParseConfig(raw map[string]interface{}) (*Config, error) {
-	if raw == nil {
-		return nil, fmt.Errorf("%w: empty config", ErrConfigInvalid)
-	}
-	data, err := json.Marshal(raw)
-	if err != nil {
-		return nil, fmt.Errorf("%w: marshal config failed", ErrConfigInvalid)
-	}
-	var cfg Config
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("%w: unmarshal config failed", ErrConfigInvalid)
-	}
-	cfg.normalize()
-	return &cfg, nil
+	return common.ParseConfig[Config](raw, ErrConfigInvalid)
 }
 
 // ValidateConfig 校验易支付配置完整性
@@ -167,7 +156,7 @@ func CreatePayment(ctx context.Context, cfg *Config, input CreateInput) (*Create
 	}
 }
 
-func (c *Config) normalize() {
+func (c *Config) Normalize() {
 	c.EpayVersion = strings.ToLower(strings.TrimSpace(c.EpayVersion))
 	c.SignType = strings.TrimSpace(c.SignType)
 	if c.SignType == "" {

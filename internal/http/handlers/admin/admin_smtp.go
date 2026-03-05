@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/http/response"
 	"github.com/dujiao-next/internal/service"
 
@@ -14,7 +15,7 @@ import (
 func (h *Handler) GetSMTPSettings(c *gin.Context) {
 	setting, err := h.SettingService.GetSMTPSetting(h.Config.Email)
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.settings_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.settings_fetch_failed", err)
 		return
 	}
 	response.Success(c, service.MaskSMTPSettingForAdmin(setting))
@@ -24,7 +25,7 @@ func (h *Handler) GetSMTPSettings(c *gin.Context) {
 func (h *Handler) UpdateSMTPSettings(c *gin.Context) {
 	var req service.SMTPSettingPatch
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
@@ -32,9 +33,9 @@ func (h *Handler) UpdateSMTPSettings(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrSMTPConfigInvalid):
-			respondErrorWithMsg(c, response.CodeBadRequest, err.Error(), nil)
+			shared.RespondErrorWithMsg(c, response.CodeBadRequest, err.Error(), nil)
 		default:
-			respondError(c, response.CodeInternal, "error.settings_save_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.settings_save_failed", err)
 		}
 		return
 	}
@@ -58,19 +59,19 @@ type SMTPTestSendRequest struct {
 func (h *Handler) TestSMTPSettings(c *gin.Context) {
 	var req SMTPTestSendRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
 	toEmail := strings.TrimSpace(req.ToEmail)
 	if toEmail == "" {
-		respondError(c, response.CodeBadRequest, "error.email_invalid", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.email_invalid", nil)
 		return
 	}
 
 	setting, err := h.SettingService.GetSMTPSetting(h.Config.Email)
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.settings_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.settings_fetch_failed", err)
 		return
 	}
 
@@ -81,14 +82,14 @@ func (h *Handler) TestSMTPSettings(c *gin.Context) {
 	if err := tempEmailService.SendCustomEmail(toEmail, req.Subject, req.Body); err != nil {
 		switch {
 		case errors.Is(err, service.ErrInvalidEmail):
-			respondError(c, response.CodeBadRequest, "error.email_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.email_invalid", nil)
 		case errors.Is(err, service.ErrEmailRecipientRejected):
-			respondError(c, response.CodeBadRequest, "error.email_recipient_not_found", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.email_recipient_not_found", nil)
 		case errors.Is(err, service.ErrEmailServiceDisabled),
 			errors.Is(err, service.ErrEmailServiceNotConfigured):
-			respondError(c, response.CodeBadRequest, "error.email_service_not_configured", err)
+			shared.RespondError(c, response.CodeBadRequest, "error.email_service_not_configured", err)
 		default:
-			respondError(c, response.CodeInternal, "error.send_verify_code_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.send_verify_code_failed", err)
 		}
 		return
 	}

@@ -28,12 +28,12 @@ type PaymentRepository interface {
 
 // GormPaymentRepository GORM 实现
 type GormPaymentRepository struct {
-	db *gorm.DB
+	BaseRepository
 }
 
 // NewPaymentRepository 创建支付仓库
 func NewPaymentRepository(db *gorm.DB) *GormPaymentRepository {
-	return &GormPaymentRepository{db: db}
+	return &GormPaymentRepository{BaseRepository: BaseRepository{db: db}}
 }
 
 // WithTx 绑定事务
@@ -41,15 +41,7 @@ func (r *GormPaymentRepository) WithTx(tx *gorm.DB) *GormPaymentRepository {
 	if tx == nil {
 		return r
 	}
-	return &GormPaymentRepository{db: tx}
-}
-
-// Transaction 执行事务
-func (r *GormPaymentRepository) Transaction(fn func(tx *gorm.DB) error) error {
-	if fn == nil {
-		return nil
-	}
-	return r.db.Transaction(fn)
+	return &GormPaymentRepository{BaseRepository: BaseRepository{db: tx}}
 }
 
 // Create 创建支付记录

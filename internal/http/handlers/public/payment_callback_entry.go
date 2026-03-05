@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/dujiao-next/internal/constants"
+	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/models"
 	"github.com/dujiao-next/internal/service"
 
@@ -13,7 +14,7 @@ import (
 )
 
 func (h *Handler) PaymentCallback(c *gin.Context) {
-	requestLog(c).Infow("payment_callback_received",
+	shared.RequestLog(c).Infow("payment_callback_received",
 		"method", c.Request.Method,
 		"client_ip", c.ClientIP(),
 		"content_type", strings.TrimSpace(c.GetHeader("Content-Type")),
@@ -33,7 +34,7 @@ func (h *Handler) PaymentCallback(c *gin.Context) {
 	if handled := h.HandleEpusdtCallback(c); handled {
 		return
 	}
-	requestLog(c).Warnw("payment_callback_unrecognized",
+	shared.RequestLog(c).Warnw("payment_callback_unrecognized",
 		"method", c.Request.Method,
 		"client_ip", c.ClientIP(),
 		"content_type", strings.TrimSpace(c.GetHeader("Content-Type")),
@@ -121,6 +122,6 @@ func (h *Handler) enqueuePaymentExceptionAlert(c *gin.Context, data models.JSON)
 		BizID:     0,
 		Data:      payload,
 	}); err != nil {
-		requestLog(c).Warnw("enqueue_payment_exception_alert_failed", "error", err)
+		shared.RequestLog(c).Warnw("enqueue_payment_exception_alert_failed", "error", err)
 	}
 }

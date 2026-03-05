@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strconv"
 
+	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/http/response"
 	"github.com/dujiao-next/internal/service"
 
@@ -31,7 +32,7 @@ type BannerUpsertRequest struct {
 func (h *Handler) GetAdminBanners(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	page, pageSize = normalizePagination(page, pageSize)
+	page, pageSize = shared.NormalizePagination(page, pageSize)
 
 	position := c.Query("position")
 	search := c.Query("search")
@@ -40,7 +41,7 @@ func (h *Handler) GetAdminBanners(c *gin.Context) {
 	if raw := c.Query("is_active"); raw != "" {
 		parsed, err := strconv.ParseBool(raw)
 		if err != nil {
-			respondError(c, response.CodeBadRequest, "error.bad_request", err)
+			shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 			return
 		}
 		isActive = &parsed
@@ -48,7 +49,7 @@ func (h *Handler) GetAdminBanners(c *gin.Context) {
 
 	banners, total, err := h.BannerService.ListAdmin(position, search, isActive, page, pageSize)
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.banner_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.banner_fetch_failed", err)
 		return
 	}
 
@@ -62,10 +63,10 @@ func (h *Handler) GetAdminBanner(c *gin.Context) {
 	banner, err := h.BannerService.GetByID(id)
 	if err != nil {
 		if errors.Is(err, service.ErrNotFound) {
-			respondError(c, response.CodeNotFound, "error.banner_not_found", nil)
+			shared.RespondError(c, response.CodeNotFound, "error.banner_not_found", nil)
 			return
 		}
-		respondError(c, response.CodeInternal, "error.banner_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.banner_fetch_failed", err)
 		return
 	}
 	response.Success(c, banner)
@@ -75,18 +76,18 @@ func (h *Handler) GetAdminBanner(c *gin.Context) {
 func (h *Handler) CreateBanner(c *gin.Context) {
 	var req BannerUpsertRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
-	startAt, err := parseTimeNullable(req.StartAt)
+	startAt, err := shared.ParseTimeNullable(req.StartAt)
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
-	endAt, err := parseTimeNullable(req.EndAt)
+	endAt, err := shared.ParseTimeNullable(req.EndAt)
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
@@ -108,9 +109,9 @@ func (h *Handler) CreateBanner(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrInvalidBanner):
-			respondError(c, response.CodeBadRequest, "error.banner_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.banner_invalid", nil)
 		default:
-			respondError(c, response.CodeInternal, "error.banner_create_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.banner_create_failed", err)
 		}
 		return
 	}
@@ -122,24 +123,24 @@ func (h *Handler) CreateBanner(c *gin.Context) {
 func (h *Handler) UpdateBanner(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		respondError(c, response.CodeBadRequest, "error.bad_request", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", nil)
 		return
 	}
 
 	var req BannerUpsertRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
-	startAt, err := parseTimeNullable(req.StartAt)
+	startAt, err := shared.ParseTimeNullable(req.StartAt)
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
-	endAt, err := parseTimeNullable(req.EndAt)
+	endAt, err := shared.ParseTimeNullable(req.EndAt)
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
@@ -161,11 +162,11 @@ func (h *Handler) UpdateBanner(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrInvalidBanner):
-			respondError(c, response.CodeBadRequest, "error.banner_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.banner_invalid", nil)
 		case errors.Is(err, service.ErrNotFound):
-			respondError(c, response.CodeNotFound, "error.banner_not_found", nil)
+			shared.RespondError(c, response.CodeNotFound, "error.banner_not_found", nil)
 		default:
-			respondError(c, response.CodeInternal, "error.banner_update_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.banner_update_failed", err)
 		}
 		return
 	}
@@ -177,16 +178,16 @@ func (h *Handler) UpdateBanner(c *gin.Context) {
 func (h *Handler) DeleteBanner(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		respondError(c, response.CodeBadRequest, "error.bad_request", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", nil)
 		return
 	}
 
 	if err := h.BannerService.Delete(id); err != nil {
 		switch {
 		case errors.Is(err, service.ErrNotFound):
-			respondError(c, response.CodeNotFound, "error.banner_not_found", nil)
+			shared.RespondError(c, response.CodeNotFound, "error.banner_not_found", nil)
 		default:
-			respondError(c, response.CodeInternal, "error.banner_delete_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.banner_delete_failed", err)
 		}
 		return
 	}
@@ -209,7 +210,7 @@ func (h *Handler) GetPublicBanners(c *gin.Context) {
 
 	banners, err := h.BannerService.ListPublic(position, limit)
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.banner_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.banner_fetch_failed", err)
 		return
 	}
 

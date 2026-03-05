@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/dujiao-next/internal/constants"
+	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/http/response"
 	"github.com/dujiao-next/internal/models"
 	"github.com/dujiao-next/internal/repository"
@@ -46,21 +47,21 @@ type adminWalletRechargeItem struct {
 func (h *Handler) GetAdminUserWallet(c *gin.Context) {
 	userID, ok := parsePathUint(c, "id")
 	if !ok {
-		respondError(c, response.CodeBadRequest, "error.user_id_invalid", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.user_id_invalid", nil)
 		return
 	}
 	user, err := h.UserRepo.GetByID(userID)
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.user_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.user_fetch_failed", err)
 		return
 	}
 	if user == nil {
-		respondError(c, response.CodeNotFound, "error.user_not_found", nil)
+		shared.RespondError(c, response.CodeNotFound, "error.user_not_found", nil)
 		return
 	}
 	account, err := h.WalletService.GetAccount(userID)
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.user_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.user_fetch_failed", err)
 		return
 	}
 	response.Success(c, gin.H{
@@ -73,12 +74,12 @@ func (h *Handler) GetAdminUserWallet(c *gin.Context) {
 func (h *Handler) GetAdminUserWalletTransactions(c *gin.Context) {
 	userID, ok := parsePathUint(c, "id")
 	if !ok {
-		respondError(c, response.CodeBadRequest, "error.user_id_invalid", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.user_id_invalid", nil)
 		return
 	}
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	page, pageSize = normalizePagination(page, pageSize)
+	page, pageSize = shared.NormalizePagination(page, pageSize)
 
 	filter := repository.WalletTransactionListFilter{
 		Page:      page,
@@ -89,7 +90,7 @@ func (h *Handler) GetAdminUserWalletTransactions(c *gin.Context) {
 	}
 	transactions, total, err := h.WalletService.ListTransactions(filter)
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.user_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.user_fetch_failed", err)
 		return
 	}
 	pagination := response.BuildPagination(page, pageSize, total)
@@ -100,41 +101,41 @@ func (h *Handler) GetAdminUserWalletTransactions(c *gin.Context) {
 func (h *Handler) GetAdminWalletRecharges(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	page, pageSize = normalizePagination(page, pageSize)
+	page, pageSize = shared.NormalizePagination(page, pageSize)
 
 	userID, err := parseQueryUint(c.Query("user_id"))
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 	paymentID, err := parseQueryUint(c.Query("payment_id"))
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 	channelID, err := parseQueryUint(c.Query("channel_id"))
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
-	createdFrom, err := parseTimeNullable(strings.TrimSpace(c.Query("created_from")))
+	createdFrom, err := shared.ParseTimeNullable(strings.TrimSpace(c.Query("created_from")))
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
-	createdTo, err := parseTimeNullable(strings.TrimSpace(c.Query("created_to")))
+	createdTo, err := shared.ParseTimeNullable(strings.TrimSpace(c.Query("created_to")))
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
-	paidFrom, err := parseTimeNullable(strings.TrimSpace(c.Query("paid_from")))
+	paidFrom, err := shared.ParseTimeNullable(strings.TrimSpace(c.Query("paid_from")))
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
-	paidTo, err := parseTimeNullable(strings.TrimSpace(c.Query("paid_to")))
+	paidTo, err := shared.ParseTimeNullable(strings.TrimSpace(c.Query("paid_to")))
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
@@ -155,7 +156,7 @@ func (h *Handler) GetAdminWalletRecharges(c *gin.Context) {
 		PaidTo:       paidTo,
 	})
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.payment_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.payment_fetch_failed", err)
 		return
 	}
 
@@ -190,7 +191,7 @@ func (h *Handler) GetAdminWalletRecharges(c *gin.Context) {
 	if len(userIDs) > 0 {
 		users, userErr := h.UserRepo.ListByIDs(userIDs)
 		if userErr != nil {
-			respondError(c, response.CodeInternal, "error.user_fetch_failed", userErr)
+			shared.RespondError(c, response.CodeInternal, "error.user_fetch_failed", userErr)
 			return
 		}
 		for _, user := range users {
@@ -202,7 +203,7 @@ func (h *Handler) GetAdminWalletRecharges(c *gin.Context) {
 	if len(channelIDs) > 0 {
 		channels, channelErr := h.PaymentChannelRepo.ListByIDs(channelIDs)
 		if channelErr != nil {
-			respondError(c, response.CodeInternal, "error.payment_fetch_failed", channelErr)
+			shared.RespondError(c, response.CodeInternal, "error.payment_fetch_failed", channelErr)
 			return
 		}
 		for _, channel := range channels {
@@ -214,7 +215,7 @@ func (h *Handler) GetAdminWalletRecharges(c *gin.Context) {
 	if len(paymentIDs) > 0 {
 		payments, paymentErr := h.PaymentRepo.GetByIDs(paymentIDs)
 		if paymentErr != nil {
-			respondError(c, response.CodeInternal, "error.payment_fetch_failed", paymentErr)
+			shared.RespondError(c, response.CodeInternal, "error.payment_fetch_failed", paymentErr)
 			return
 		}
 		for _, payment := range payments {
@@ -247,21 +248,21 @@ func (h *Handler) GetAdminWalletRecharges(c *gin.Context) {
 func (h *Handler) AdjustAdminUserWallet(c *gin.Context) {
 	userID, ok := parsePathUint(c, "id")
 	if !ok {
-		respondError(c, response.CodeBadRequest, "error.user_id_invalid", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.user_id_invalid", nil)
 		return
 	}
 	var req AdminAdjustUserWalletRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 	amount, err := decimal.NewFromString(strings.TrimSpace(req.Amount))
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 	if amount.LessThanOrEqual(decimal.Zero) {
-		respondError(c, response.CodeBadRequest, "error.bad_request", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", nil)
 		return
 	}
 	op := strings.ToLower(strings.TrimSpace(req.Operation))
@@ -273,7 +274,7 @@ func (h *Handler) AdjustAdminUserWallet(c *gin.Context) {
 		delta = amount.Neg()
 	}
 	if op != "add" && op != "subtract" {
-		respondError(c, response.CodeBadRequest, "error.bad_request", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", nil)
 		return
 	}
 	currency := strings.TrimSpace(req.Currency)
@@ -293,11 +294,11 @@ func (h *Handler) AdjustAdminUserWallet(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrWalletInvalidAmount):
-			respondError(c, response.CodeBadRequest, "error.bad_request", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.bad_request", nil)
 		case errors.Is(err, service.ErrWalletInsufficientBalance):
-			respondError(c, response.CodeBadRequest, "error.payment_amount_mismatch", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.payment_amount_mismatch", nil)
 		default:
-			respondError(c, response.CodeInternal, "error.user_update_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.user_update_failed", err)
 		}
 		return
 	}
@@ -312,17 +313,17 @@ func (h *Handler) AdjustAdminUserWallet(c *gin.Context) {
 func (h *Handler) AdminRefundOrderToWallet(c *gin.Context) {
 	orderID, ok := parsePathUint(c, "id")
 	if !ok {
-		respondError(c, response.CodeBadRequest, "error.order_item_invalid", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.order_item_invalid", nil)
 		return
 	}
 	var req AdminRefundOrderToWalletRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 	amount, err := decimal.NewFromString(strings.TrimSpace(req.Amount))
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 	order, txn, err := h.WalletService.AdminRefundToWallet(service.AdminRefundToWalletInput{
@@ -333,13 +334,13 @@ func (h *Handler) AdminRefundOrderToWallet(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrOrderNotFound):
-			respondError(c, response.CodeNotFound, "error.order_not_found", nil)
+			shared.RespondError(c, response.CodeNotFound, "error.order_not_found", nil)
 		case errors.Is(err, service.ErrOrderStatusInvalid):
-			respondError(c, response.CodeBadRequest, "error.order_status_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.order_status_invalid", nil)
 		case errors.Is(err, service.ErrWalletInvalidAmount), errors.Is(err, service.ErrWalletRefundExceeded), errors.Is(err, service.ErrWalletNotSupportedForGuest):
-			respondError(c, response.CodeBadRequest, "error.bad_request", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.bad_request", nil)
 		default:
-			respondError(c, response.CodeInternal, "error.order_update_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.order_update_failed", err)
 		}
 		return
 	}

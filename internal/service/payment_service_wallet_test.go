@@ -46,7 +46,16 @@ func setupPaymentServiceWalletTest(t *testing.T) (*PaymentService, *gorm.DB) {
 	walletRepo := repository.NewWalletRepository(db)
 	userRepo := repository.NewUserRepository(db)
 	walletSvc := NewWalletService(walletRepo, orderRepo, userRepo, nil)
-	paymentSvc := NewPaymentService(orderRepo, productRepo, productSKURepo, paymentRepo, channelRepo, walletRepo, nil, walletSvc, nil, 15, nil, nil)
+	paymentSvc := NewPaymentService(PaymentServiceOptions{
+		OrderRepo:      orderRepo,
+		ProductRepo:    productRepo,
+		ProductSKURepo: productSKURepo,
+		PaymentRepo:    paymentRepo,
+		ChannelRepo:    channelRepo,
+		WalletRepo:     walletRepo,
+		WalletService:  walletSvc,
+		ExpireMinutes:  15,
+	})
 
 	return paymentSvc, db
 }

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/dujiao-next/internal/constants"
+	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/http/response"
 	"github.com/dujiao-next/internal/service"
 
@@ -43,23 +44,23 @@ const callbackLogValueLimit = 4096
 
 // CreatePayment 创建支付单
 func (h *Handler) CreatePayment(c *gin.Context) {
-	uid, ok := getUserID(c)
+	uid, ok := shared.GetUserID(c)
 	if !ok {
 		return
 	}
 
 	var req CreatePaymentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
 	if _, err := h.OrderService.GetOrderByUser(req.OrderID, uid); err != nil {
 		if errors.Is(err, service.ErrOrderNotFound) {
-			respondError(c, response.CodeNotFound, "error.order_not_found", nil)
+			shared.RespondError(c, response.CodeNotFound, "error.order_not_found", nil)
 			return
 		}
-		respondError(c, response.CodeInternal, "error.order_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.order_fetch_failed", err)
 		return
 	}
 
@@ -94,30 +95,30 @@ func (h *Handler) CreatePayment(c *gin.Context) {
 
 // CapturePayment 用户捕获支付。
 func (h *Handler) CapturePayment(c *gin.Context) {
-	uid, ok := getUserID(c)
+	uid, ok := shared.GetUserID(c)
 	if !ok {
 		return
 	}
 	paymentID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil || paymentID == 0 {
-		respondError(c, response.CodeBadRequest, "error.payment_invalid", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.payment_invalid", nil)
 		return
 	}
 	payment, err := h.PaymentService.GetPayment(uint(paymentID))
 	if err != nil {
 		if errors.Is(err, service.ErrPaymentNotFound) {
-			respondError(c, response.CodeNotFound, "error.payment_not_found", nil)
+			shared.RespondError(c, response.CodeNotFound, "error.payment_not_found", nil)
 			return
 		}
-		respondError(c, response.CodeInternal, "error.payment_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.payment_fetch_failed", err)
 		return
 	}
 	if _, err := h.OrderService.GetOrderByUser(payment.OrderID, uid); err != nil {
 		if errors.Is(err, service.ErrOrderNotFound) {
-			respondError(c, response.CodeNotFound, "error.order_not_found", nil)
+			shared.RespondError(c, response.CodeNotFound, "error.order_not_found", nil)
 			return
 		}
-		respondError(c, response.CodeInternal, "error.order_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.order_fetch_failed", err)
 		return
 	}
 	updated, err := h.PaymentService.CapturePayment(service.CapturePaymentInput{
@@ -136,47 +137,47 @@ func (h *Handler) CapturePayment(c *gin.Context) {
 
 // GetLatestPayment 获取用户最新待支付记录
 func (h *Handler) GetLatestPayment(c *gin.Context) {
-	uid, ok := getUserID(c)
+	uid, ok := shared.GetUserID(c)
 	if !ok {
 		return
 	}
 
 	var query LatestPaymentQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
 	order, err := h.OrderService.GetOrderByUser(query.OrderID, uid)
 	if err != nil {
 		if errors.Is(err, service.ErrOrderNotFound) {
-			respondError(c, response.CodeNotFound, "error.order_not_found", nil)
+			shared.RespondError(c, response.CodeNotFound, "error.order_not_found", nil)
 			return
 		}
-		respondError(c, response.CodeInternal, "error.order_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.order_fetch_failed", err)
 		return
 	}
 
 	if order.ParentID != nil {
-		respondError(c, response.CodeBadRequest, "error.payment_invalid", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.payment_invalid", nil)
 		return
 	}
 	if order.Status != constants.OrderStatusPendingPayment {
-		respondError(c, response.CodeBadRequest, "error.order_status_invalid", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.order_status_invalid", nil)
 		return
 	}
 	if order.ExpiresAt != nil && !order.ExpiresAt.After(time.Now()) {
-		respondError(c, response.CodeBadRequest, "error.order_status_invalid", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.order_status_invalid", nil)
 		return
 	}
 
 	payment, err := h.PaymentRepo.GetLatestPendingByOrder(order.ID, time.Now())
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.payment_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.payment_fetch_failed", err)
 		return
 	}
 	if payment == nil {
-		respondError(c, response.CodeNotFound, "error.payment_not_found", nil)
+		shared.RespondError(c, response.CodeNotFound, "error.payment_not_found", nil)
 		return
 	}
 

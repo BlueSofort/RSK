@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/http/response"
 	"github.com/dujiao-next/internal/models"
 	"github.com/dujiao-next/internal/service"
@@ -57,23 +58,23 @@ type adminGiftCardItem struct {
 
 // GenerateGiftCards 管理端生成礼品卡
 func (h *Handler) GenerateGiftCards(c *gin.Context) {
-	adminID, ok := getAdminID(c)
+	adminID, ok := shared.GetAdminID(c)
 	if !ok {
 		return
 	}
 	var req GenerateGiftCardsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 	amount, err := decimal.NewFromString(strings.TrimSpace(req.Amount))
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
-	expiresAt, err := parseTimeNullable(strings.TrimSpace(req.ExpiresAt))
+	expiresAt, err := shared.ParseTimeNullable(strings.TrimSpace(req.ExpiresAt))
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 	batch, created, err := h.GiftCardService.GenerateGiftCards(service.GenerateGiftCardsInput{
@@ -86,9 +87,9 @@ func (h *Handler) GenerateGiftCards(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrGiftCardInvalid):
-			respondError(c, response.CodeBadRequest, "error.gift_card_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.gift_card_invalid", nil)
 		default:
-			respondError(c, response.CodeInternal, "error.gift_card_create_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.gift_card_create_failed", err)
 		}
 		return
 	}
@@ -102,7 +103,7 @@ func (h *Handler) GenerateGiftCards(c *gin.Context) {
 func (h *Handler) GetGiftCards(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	page, pageSize = normalizePagination(page, pageSize)
+	page, pageSize = shared.NormalizePagination(page, pageSize)
 
 	status := strings.TrimSpace(strings.ToLower(c.Query("status")))
 	code := strings.TrimSpace(c.Query("code"))
@@ -112,40 +113,40 @@ func (h *Handler) GetGiftCards(c *gin.Context) {
 	if rawUserID := strings.TrimSpace(c.Query("redeemed_user_id")); rawUserID != "" {
 		parsed, err := strconv.ParseUint(rawUserID, 10, 64)
 		if err != nil || parsed == 0 {
-			respondError(c, response.CodeBadRequest, "error.bad_request", err)
+			shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 			return
 		}
 		redeemedUserID = uint(parsed)
 	}
 
-	createdFrom, err := parseTimeNullable(strings.TrimSpace(c.Query("created_from")))
+	createdFrom, err := shared.ParseTimeNullable(strings.TrimSpace(c.Query("created_from")))
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
-	createdTo, err := parseTimeNullable(strings.TrimSpace(c.Query("created_to")))
+	createdTo, err := shared.ParseTimeNullable(strings.TrimSpace(c.Query("created_to")))
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
-	redeemedFrom, err := parseTimeNullable(strings.TrimSpace(c.Query("redeemed_from")))
+	redeemedFrom, err := shared.ParseTimeNullable(strings.TrimSpace(c.Query("redeemed_from")))
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
-	redeemedTo, err := parseTimeNullable(strings.TrimSpace(c.Query("redeemed_to")))
+	redeemedTo, err := shared.ParseTimeNullable(strings.TrimSpace(c.Query("redeemed_to")))
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
-	expiresFrom, err := parseTimeNullable(strings.TrimSpace(c.Query("expires_from")))
+	expiresFrom, err := shared.ParseTimeNullable(strings.TrimSpace(c.Query("expires_from")))
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
-	expiresTo, err := parseTimeNullable(strings.TrimSpace(c.Query("expires_to")))
+	expiresTo, err := shared.ParseTimeNullable(strings.TrimSpace(c.Query("expires_to")))
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
@@ -164,13 +165,13 @@ func (h *Handler) GetGiftCards(c *gin.Context) {
 		PageSize:       pageSize,
 	})
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.gift_card_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.gift_card_fetch_failed", err)
 		return
 	}
 
 	userMap, err := h.GiftCardService.ResolveRedeemedUsers(cards)
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.gift_card_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.gift_card_fetch_failed", err)
 		return
 	}
 
@@ -201,12 +202,12 @@ func (h *Handler) GetGiftCards(c *gin.Context) {
 func (h *Handler) UpdateGiftCard(c *gin.Context) {
 	id, ok := parsePathUint(c, "id")
 	if !ok {
-		respondError(c, response.CodeBadRequest, "error.bad_request", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", nil)
 		return
 	}
 	var req UpdateGiftCardRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 	var (
@@ -217,9 +218,9 @@ func (h *Handler) UpdateGiftCard(c *gin.Context) {
 		if strings.TrimSpace(*req.ExpiresAt) == "" {
 			clearExpiresAt = true
 		} else {
-			parsed, err := parseTimeNullable(strings.TrimSpace(*req.ExpiresAt))
+			parsed, err := shared.ParseTimeNullable(strings.TrimSpace(*req.ExpiresAt))
 			if err != nil {
-				respondError(c, response.CodeBadRequest, "error.bad_request", err)
+				shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 				return
 			}
 			expiresAt = parsed
@@ -234,11 +235,11 @@ func (h *Handler) UpdateGiftCard(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrGiftCardNotFound):
-			respondError(c, response.CodeNotFound, "error.gift_card_not_found", nil)
+			shared.RespondError(c, response.CodeNotFound, "error.gift_card_not_found", nil)
 		case errors.Is(err, service.ErrGiftCardInvalid):
-			respondError(c, response.CodeBadRequest, "error.gift_card_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.gift_card_invalid", nil)
 		default:
-			respondError(c, response.CodeInternal, "error.gift_card_update_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.gift_card_update_failed", err)
 		}
 		return
 	}
@@ -249,17 +250,17 @@ func (h *Handler) UpdateGiftCard(c *gin.Context) {
 func (h *Handler) DeleteGiftCard(c *gin.Context) {
 	id, ok := parsePathUint(c, "id")
 	if !ok {
-		respondError(c, response.CodeBadRequest, "error.bad_request", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", nil)
 		return
 	}
 	if err := h.GiftCardService.DeleteGiftCard(id); err != nil {
 		switch {
 		case errors.Is(err, service.ErrGiftCardNotFound):
-			respondError(c, response.CodeNotFound, "error.gift_card_not_found", nil)
+			shared.RespondError(c, response.CodeNotFound, "error.gift_card_not_found", nil)
 		case errors.Is(err, service.ErrGiftCardInvalid):
-			respondError(c, response.CodeBadRequest, "error.gift_card_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.gift_card_invalid", nil)
 		default:
-			respondError(c, response.CodeInternal, "error.gift_card_delete_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.gift_card_delete_failed", err)
 		}
 		return
 	}
@@ -270,16 +271,16 @@ func (h *Handler) DeleteGiftCard(c *gin.Context) {
 func (h *Handler) BatchUpdateGiftCardStatus(c *gin.Context) {
 	var req BatchUpdateGiftCardStatusRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 	affected, err := h.GiftCardService.BatchUpdateStatus(req.IDs, req.Status)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrGiftCardInvalid):
-			respondError(c, response.CodeBadRequest, "error.gift_card_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.gift_card_invalid", nil)
 		default:
-			respondError(c, response.CodeInternal, "error.gift_card_update_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.gift_card_update_failed", err)
 		}
 		return
 	}
@@ -290,18 +291,18 @@ func (h *Handler) BatchUpdateGiftCardStatus(c *gin.Context) {
 func (h *Handler) ExportGiftCards(c *gin.Context) {
 	var req ExportGiftCardRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 	content, contentType, err := h.GiftCardService.ExportGiftCards(req.IDs, req.Format)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrGiftCardNotFound):
-			respondError(c, response.CodeNotFound, "error.gift_card_not_found", nil)
+			shared.RespondError(c, response.CodeNotFound, "error.gift_card_not_found", nil)
 		case errors.Is(err, service.ErrGiftCardInvalid):
-			respondError(c, response.CodeBadRequest, "error.gift_card_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.gift_card_invalid", nil)
 		default:
-			respondError(c, response.CodeInternal, "error.gift_card_fetch_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.gift_card_fetch_failed", err)
 		}
 		return
 	}

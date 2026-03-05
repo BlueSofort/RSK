@@ -29,12 +29,12 @@ type OrderRepository interface {
 
 // GormOrderRepository GORM 实现
 type GormOrderRepository struct {
-	db *gorm.DB
+	BaseRepository
 }
 
 // NewOrderRepository 创建订单仓库
 func NewOrderRepository(db *gorm.DB) *GormOrderRepository {
-	return &GormOrderRepository{db: db}
+	return &GormOrderRepository{BaseRepository: BaseRepository{db: db}}
 }
 
 // WithTx 绑定事务
@@ -42,15 +42,7 @@ func (r *GormOrderRepository) WithTx(tx *gorm.DB) *GormOrderRepository {
 	if tx == nil {
 		return r
 	}
-	return &GormOrderRepository{db: tx}
-}
-
-// Transaction 执行事务
-func (r *GormOrderRepository) Transaction(fn func(tx *gorm.DB) error) error {
-	if fn == nil {
-		return nil
-	}
-	return r.db.Transaction(fn)
+	return &GormOrderRepository{BaseRepository: BaseRepository{db: tx}}
 }
 
 func (r *GormOrderRepository) withChildren(query *gorm.DB) *gorm.DB {

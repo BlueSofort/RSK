@@ -4,8 +4,8 @@ import (
 	"errors"
 	"strconv"
 	"strings"
-	"time"
 
+	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/http/response"
 	"github.com/dujiao-next/internal/models"
 	"github.com/dujiao-next/internal/repository"
@@ -34,18 +34,18 @@ type CreateCouponRequest struct {
 func (h *Handler) CreateCoupon(c *gin.Context) {
 	var req CreateCouponRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
-	startsAt, err := parseTimeNullable(req.StartsAt)
+	startsAt, err := shared.ParseTimeNullable(req.StartsAt)
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
-	endsAt, err := parseTimeNullable(req.EndsAt)
+	endsAt, err := shared.ParseTimeNullable(req.EndsAt)
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
@@ -65,11 +65,11 @@ func (h *Handler) CreateCoupon(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrCouponInvalid):
-			respondError(c, response.CodeBadRequest, "error.coupon_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.coupon_invalid", nil)
 		case errors.Is(err, service.ErrCouponScopeInvalid):
-			respondError(c, response.CodeBadRequest, "error.coupon_scope_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.coupon_scope_invalid", nil)
 		default:
-			respondError(c, response.CodeInternal, "error.coupon_create_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.coupon_create_failed", err)
 		}
 		return
 	}
@@ -81,23 +81,23 @@ func (h *Handler) CreateCoupon(c *gin.Context) {
 func (h *Handler) UpdateCoupon(c *gin.Context) {
 	couponID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil || couponID == 0 {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 	var req CreateCouponRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
-	startsAt, err := parseTimeNullable(req.StartsAt)
+	startsAt, err := shared.ParseTimeNullable(req.StartsAt)
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
-	endsAt, err := parseTimeNullable(req.EndsAt)
+	endsAt, err := shared.ParseTimeNullable(req.EndsAt)
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
@@ -117,13 +117,13 @@ func (h *Handler) UpdateCoupon(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrCouponNotFound):
-			respondError(c, response.CodeNotFound, "error.coupon_not_found", nil)
+			shared.RespondError(c, response.CodeNotFound, "error.coupon_not_found", nil)
 		case errors.Is(err, service.ErrCouponInvalid):
-			respondError(c, response.CodeBadRequest, "error.coupon_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.coupon_invalid", nil)
 		case errors.Is(err, service.ErrCouponScopeInvalid):
-			respondError(c, response.CodeBadRequest, "error.coupon_scope_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.coupon_scope_invalid", nil)
 		default:
-			respondError(c, response.CodeInternal, "error.coupon_update_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.coupon_update_failed", err)
 		}
 		return
 	}
@@ -135,17 +135,17 @@ func (h *Handler) UpdateCoupon(c *gin.Context) {
 func (h *Handler) DeleteCoupon(c *gin.Context) {
 	couponID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil || couponID == 0 {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 	if err := h.CouponAdminService.Delete(uint(couponID)); err != nil {
 		switch {
 		case errors.Is(err, service.ErrCouponNotFound):
-			respondError(c, response.CodeNotFound, "error.coupon_not_found", nil)
+			shared.RespondError(c, response.CodeNotFound, "error.coupon_not_found", nil)
 		case errors.Is(err, service.ErrCouponInvalid):
-			respondError(c, response.CodeBadRequest, "error.coupon_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.coupon_invalid", nil)
 		default:
-			respondError(c, response.CodeInternal, "error.coupon_delete_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.coupon_delete_failed", err)
 		}
 		return
 	}
@@ -158,14 +158,14 @@ func (h *Handler) DeleteCoupon(c *gin.Context) {
 func (h *Handler) GetAdminCoupons(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	page, pageSize = normalizePagination(page, pageSize)
+	page, pageSize = shared.NormalizePagination(page, pageSize)
 
 	code := c.Query("code")
 	var id uint
 	if rawID := strings.TrimSpace(c.Query("id")); rawID != "" {
 		parsed, err := strconv.ParseUint(rawID, 10, 64)
 		if err != nil || parsed == 0 {
-			respondError(c, response.CodeBadRequest, "error.bad_request", err)
+			shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 			return
 		}
 		id = uint(parsed)
@@ -174,7 +174,7 @@ func (h *Handler) GetAdminCoupons(c *gin.Context) {
 	if rawScopeRefID := strings.TrimSpace(c.Query("scope_ref_id")); rawScopeRefID != "" {
 		parsed, err := strconv.ParseUint(rawScopeRefID, 10, 64)
 		if err != nil || parsed == 0 {
-			respondError(c, response.CodeBadRequest, "error.bad_request", err)
+			shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 			return
 		}
 		scopeRefID = uint(parsed)
@@ -183,7 +183,7 @@ func (h *Handler) GetAdminCoupons(c *gin.Context) {
 	if raw := c.Query("is_active"); raw != "" {
 		parsed, err := strconv.ParseBool(raw)
 		if err != nil {
-			respondError(c, response.CodeBadRequest, "error.bad_request", err)
+			shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 			return
 		}
 		isActive = &parsed
@@ -198,21 +198,10 @@ func (h *Handler) GetAdminCoupons(c *gin.Context) {
 		PageSize:   pageSize,
 	})
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.coupon_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.coupon_fetch_failed", err)
 		return
 	}
 
 	pagination := response.BuildPagination(page, pageSize, total)
 	response.SuccessWithPage(c, coupons, pagination)
-}
-
-func parseTimeNullable(raw string) (*time.Time, error) {
-	if raw == "" {
-		return nil, nil
-	}
-	parsed, err := time.Parse(time.RFC3339, raw)
-	if err != nil {
-		return nil, err
-	}
-	return &parsed, nil
 }

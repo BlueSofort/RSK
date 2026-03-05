@@ -3,6 +3,7 @@ package public
 import (
 	"errors"
 
+	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/http/response"
 	"github.com/dujiao-next/internal/service"
 
@@ -19,11 +20,11 @@ type mappedHandlerError struct {
 func respondWithMappedError(c *gin.Context, err error, rules []mappedHandlerError, fallbackCode int, fallbackKey string) {
 	for _, rule := range rules {
 		if errors.Is(err, rule.target) {
-			respondError(c, rule.code, rule.key, nil)
+			shared.RespondError(c, rule.code, rule.key, nil)
 			return
 		}
 	}
-	respondError(c, fallbackCode, fallbackKey, err)
+	shared.RespondError(c, fallbackCode, fallbackKey, err)
 }
 
 func concatMappedHandlerErrors(groups ...[]mappedHandlerError) []mappedHandlerError {

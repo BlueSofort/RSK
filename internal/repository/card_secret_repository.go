@@ -42,12 +42,12 @@ type SKUStockCount struct {
 
 // GormCardSecretRepository GORM 实现
 type GormCardSecretRepository struct {
-	db *gorm.DB
+	BaseRepository
 }
 
 // NewCardSecretRepository 创建卡密仓库
 func NewCardSecretRepository(db *gorm.DB) *GormCardSecretRepository {
-	return &GormCardSecretRepository{db: db}
+	return &GormCardSecretRepository{BaseRepository: BaseRepository{db: db}}
 }
 
 // WithTx 绑定事务
@@ -55,15 +55,7 @@ func (r *GormCardSecretRepository) WithTx(tx *gorm.DB) *GormCardSecretRepository
 	if tx == nil {
 		return r
 	}
-	return &GormCardSecretRepository{db: tx}
-}
-
-// Transaction 执行事务
-func (r *GormCardSecretRepository) Transaction(fn func(tx *gorm.DB) error) error {
-	if fn == nil {
-		return nil
-	}
-	return r.db.Transaction(fn)
+	return &GormCardSecretRepository{BaseRepository: BaseRepository{db: tx}}
 }
 
 // CreateBatch 批量创建卡密

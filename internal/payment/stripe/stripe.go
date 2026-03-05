@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/dujiao-next/internal/constants"
+	"github.com/dujiao-next/internal/payment/common"
 
 	"github.com/shopspring/decimal"
 )
@@ -139,19 +140,7 @@ type WebhookResult struct {
 
 // ParseConfig 解析配置。
 func ParseConfig(raw map[string]interface{}) (*Config, error) {
-	if raw == nil {
-		return nil, fmt.Errorf("%w: empty config", ErrConfigInvalid)
-	}
-	data, err := json.Marshal(raw)
-	if err != nil {
-		return nil, fmt.Errorf("%w: marshal config failed", ErrConfigInvalid)
-	}
-	var cfg Config
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("%w: unmarshal config failed", ErrConfigInvalid)
-	}
-	cfg.normalize()
-	return &cfg, nil
+	return common.ParseConfig[Config](raw, ErrConfigInvalid)
 }
 
 // ValidateConfig 校验配置。
@@ -554,7 +543,7 @@ func sanitizeURLForValidation(rawURL string) string {
 	return strings.ReplaceAll(trimmed, "{CHECKOUT_SESSION_ID}", "cs_test_placeholder")
 }
 
-func (c *Config) normalize() {
+func (c *Config) Normalize() {
 	c.SecretKey = strings.TrimSpace(c.SecretKey)
 	c.PublishableKey = strings.TrimSpace(c.PublishableKey)
 	c.WebhookSecret = strings.TrimSpace(c.WebhookSecret)

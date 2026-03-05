@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/dujiao-next/internal/constants"
+	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/models"
 	"github.com/dujiao-next/internal/service"
 
@@ -22,7 +23,7 @@ const (
 )
 
 func (h *Handler) HandleWechatCallback(c *gin.Context) bool {
-	log := requestLog(c)
+	log := shared.RequestLog(c)
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		log.Warnw("wechat_callback_body_read_failed", "error", err)

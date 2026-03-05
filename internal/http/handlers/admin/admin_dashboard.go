@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/http/response"
 	"github.com/dujiao-next/internal/service"
 
@@ -15,17 +16,17 @@ import (
 func (h *Handler) GetDashboardOverview(c *gin.Context) {
 	input, err := parseDashboardQuery(c)
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
 	data, err := h.DashboardService.GetOverview(c.Request.Context(), input)
 	if err != nil {
 		if errors.Is(err, service.ErrDashboardRangeInvalid) {
-			respondError(c, response.CodeBadRequest, "error.bad_request", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.bad_request", nil)
 			return
 		}
-		respondError(c, response.CodeInternal, "error.dashboard_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.dashboard_fetch_failed", err)
 		return
 	}
 
@@ -36,17 +37,17 @@ func (h *Handler) GetDashboardOverview(c *gin.Context) {
 func (h *Handler) GetDashboardRankings(c *gin.Context) {
 	input, err := parseDashboardQuery(c)
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
 	data, err := h.DashboardService.GetRankings(c.Request.Context(), input)
 	if err != nil {
 		if errors.Is(err, service.ErrDashboardRangeInvalid) {
-			respondError(c, response.CodeBadRequest, "error.bad_request", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.bad_request", nil)
 			return
 		}
-		respondError(c, response.CodeInternal, "error.dashboard_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.dashboard_fetch_failed", err)
 		return
 	}
 
@@ -57,17 +58,17 @@ func (h *Handler) GetDashboardRankings(c *gin.Context) {
 func (h *Handler) GetDashboardTrends(c *gin.Context) {
 	input, err := parseDashboardQuery(c)
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
 	data, err := h.DashboardService.GetTrends(c.Request.Context(), input)
 	if err != nil {
 		if errors.Is(err, service.ErrDashboardRangeInvalid) {
-			respondError(c, response.CodeBadRequest, "error.bad_request", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.bad_request", nil)
 			return
 		}
-		respondError(c, response.CodeInternal, "error.dashboard_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.dashboard_fetch_failed", err)
 		return
 	}
 
@@ -81,11 +82,11 @@ func parseDashboardQuery(c *gin.Context) (service.DashboardQueryInput, error) {
 	timezone := strings.TrimSpace(c.Query("tz"))
 	forceRefreshRaw := strings.TrimSpace(c.Query("force_refresh"))
 
-	from, err := parseTimeNullable(fromRaw)
+	from, err := shared.ParseTimeNullable(fromRaw)
 	if err != nil {
 		return service.DashboardQueryInput{}, err
 	}
-	to, err := parseTimeNullable(toRaw)
+	to, err := shared.ParseTimeNullable(toRaw)
 	if err != nil {
 		return service.DashboardQueryInput{}, err
 	}

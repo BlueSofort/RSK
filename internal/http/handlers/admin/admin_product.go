@@ -1,0 +1,268 @@
+package admin
+
+import (
+	"errors"
+	"strconv"
+	"strings"
+
+	"github.com/dujiao-next/internal/http/handlers/shared"
+	"github.com/dujiao-next/internal/http/response"
+	"github.com/dujiao-next/internal/models"
+	"github.com/dujiao-next/internal/service"
+
+	"github.com/gin-gonic/gin"
+	"github.com/shopspring/decimal"
+)
+
+// GetAdminProducts 获取商品列表 (Admin)
+func (h *Handler) GetAdminProducts(c *gin.Context) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+	page, pageSize = shared.NormalizePagination(page, pageSize)
+	categoryID := c.Query("category_id")
+	search := c.Query("search")
+	fulfillmentType := strings.TrimSpace(c.Query("fulfillment_type"))
+	manualStockStatus := c.Query("manual_stock_status")
+
+	products, total, err := h.ProductService.ListAdmin(categoryID, search, fulfillmentType, manualStockStatus, page, pageSize)
+	if err != nil {
+		shared.RespondError(c, response.CodeInternal, "error.product_fetch_failed", err)
+		return
+	}
+
+	if err := h.ProductService.ApplyAutoStockCounts(products); err != nil {
+		shared.RespondError(c, response.CodeInternal, "error.product_fetch_failed", err)
+		return
+	}
+
+	pagination := response.BuildPagination(page, pageSize, total)
+	response.SuccessWithPage(c, products, pagination)
+}
+
+// GetAdminProduct 获取商品详情 (Admin)
+func (h *Handler) GetAdminProduct(c *gin.Context) {
+	id := c.Param("id")
+	if strings.TrimSpace(id) == "" {
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", nil)
+		return
+	}
+
+	product, err := h.ProductService.GetAdminByID(id)
+	if err != nil {
+		if errors.Is(err, service.ErrNotFound) {
+			shared.RespondError(c, response.CodeNotFound, "error.product_not_found", nil)
+			return
+		}
+		shared.RespondError(c, response.CodeInternal, "error.product_fetch_failed", err)
+		return
+	}
+
+	temp := []models.Product{*product}
+	if err := h.ProductService.ApplyAutoStockCounts(temp); err != nil {
+		shared.RespondError(c, response.CodeInternal, "error.product_fetch_failed", err)
+		return
+	}
+	*product = temp[0]
+
+	response.Success(c, product)
+}
+
+// ====================  商品管理  ====================
+
+type ProductSKURequest struct {
+	ID               uint                   `json:"id"`
+	SKUCode          string                 `json:"sku_code" binding:"required"`
+	SpecValuesJSON   map[string]interface{} `json:"spec_values"`
+	PriceAmount      float64                `json:"price_amount" binding:"required"`
+	ManualStockTotal int                    `json:"manual_stock_total"`
+	IsActive         *bool                  `json:"is_active"`
+	SortOrder        int                    `json:"sort_order"`
+}
+
+// CreateProductRequest 创建商品请求
+type CreateProductRequest struct {
+	CategoryID         uint                   `json:"category_id" binding:"required"`
+	Slug               string                 `json:"slug" binding:"required"`
+	SeoMetaJSON        map[string]interface{} `json:"seo_meta"`
+	TitleJSON          map[string]interface{} `json:"title" binding:"required"`
+	DescriptionJSON    map[string]interface{} `json:"description"`
+	ContentJSON        map[string]interface{} `json:"content"`
+	ManualFormSchema   map[string]interface{} `json:"manual_form_schema"`
+	PriceAmount        float64                `json:"price_amount" binding:"required"`
+	Images             []string               `json:"images"`
+	Tags               []string               `json:"tags"`
+	PurchaseType       string                 `json:"purchase_type"`
+	FulfillmentType    string                 `json:"fulfillment_type"`
+	ManualStockTotal   *int                   `json:"manual_stock_total"`
+	SKUs               []ProductSKURequest    `json:"skus"`
+	IsAffiliateEnabled *bool                  `json:"is_affiliate_enabled"`
+	IsActive           *bool                  `json:"is_active"`
+	SortOrder          int                    `json:"sort_order"`
+}
+
+func toProductSKUInputs(items []ProductSKURequest) []service.ProductSKUInput {
+	if len(items) == 0 {
+		return nil
+	}
+	result := make([]service.ProductSKUInput, 0, len(items))
+	for _, item := range items {
+		result = append(result, service.ProductSKUInput{
+			ID:               item.ID,
+			SKUCode:          item.SKUCode,
+			SpecValuesJSON:   item.SpecValuesJSON,
+			PriceAmount:      decimal.NewFromFloat(item.PriceAmount),
+			ManualStockTotal: item.ManualStockTotal,
+			IsActive:         item.IsActive,
+			SortOrder:        item.SortOrder,
+		})
+	}
+	return result
+}
+
+// CreateProduct 创建商品
+func (h *Handler) CreateProduct(c *gin.Context) {
+	var req CreateProductRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
+		return
+	}
+
+	product, err := h.ProductService.Create(service.CreateProductInput{
+		CategoryID:           req.CategoryID,
+		Slug:                 req.Slug,
+		SeoMetaJSON:          req.SeoMetaJSON,
+		TitleJSON:            req.TitleJSON,
+		DescriptionJSON:      req.DescriptionJSON,
+		ContentJSON:          req.ContentJSON,
+		ManualFormSchemaJSON: req.ManualFormSchema,
+		PriceAmount:          decimal.NewFromFloat(req.PriceAmount),
+		Images:               req.Images,
+		Tags:                 req.Tags,
+		PurchaseType:         req.PurchaseType,
+		FulfillmentType:      req.FulfillmentType,
+		ManualStockTotal:     req.ManualStockTotal,
+		SKUs:                 toProductSKUInputs(req.SKUs),
+		IsAffiliateEnabled:   req.IsAffiliateEnabled,
+		IsActive:             req.IsActive,
+		SortOrder:            req.SortOrder,
+	})
+	if err != nil {
+		if errors.Is(err, service.ErrSlugExists) {
+			shared.RespondError(c, response.CodeBadRequest, "error.slug_exists", nil)
+			return
+		}
+		if errors.Is(err, service.ErrProductPriceInvalid) {
+			shared.RespondError(c, response.CodeBadRequest, "error.product_price_invalid", nil)
+			return
+		}
+		if errors.Is(err, service.ErrProductPurchaseInvalid) {
+			shared.RespondError(c, response.CodeBadRequest, "error.product_purchase_invalid", nil)
+			return
+		}
+		if errors.Is(err, service.ErrFulfillmentInvalid) {
+			shared.RespondError(c, response.CodeBadRequest, "error.fulfillment_invalid", nil)
+			return
+		}
+		if errors.Is(err, service.ErrManualFormSchemaInvalid) {
+			shared.RespondError(c, response.CodeBadRequest, "error.manual_form_schema_invalid", nil)
+			return
+		}
+		if errors.Is(err, service.ErrManualStockInvalid) {
+			shared.RespondError(c, response.CodeBadRequest, "error.manual_stock_invalid", nil)
+			return
+		}
+		if errors.Is(err, service.ErrProductSKUInvalid) {
+			shared.RespondError(c, response.CodeBadRequest, "error.bad_request", nil)
+			return
+		}
+		shared.RespondError(c, response.CodeInternal, "error.product_create_failed", err)
+		return
+	}
+
+	response.Success(c, product)
+}
+
+// UpdateProduct 更新商品
+func (h *Handler) UpdateProduct(c *gin.Context) {
+	id := c.Param("id")
+
+	var req CreateProductRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
+		return
+	}
+
+	product, err := h.ProductService.Update(id, service.CreateProductInput{
+		CategoryID:           req.CategoryID,
+		Slug:                 req.Slug,
+		SeoMetaJSON:          req.SeoMetaJSON,
+		TitleJSON:            req.TitleJSON,
+		DescriptionJSON:      req.DescriptionJSON,
+		ContentJSON:          req.ContentJSON,
+		ManualFormSchemaJSON: req.ManualFormSchema,
+		PriceAmount:          decimal.NewFromFloat(req.PriceAmount),
+		Images:               req.Images,
+		Tags:                 req.Tags,
+		PurchaseType:         req.PurchaseType,
+		FulfillmentType:      req.FulfillmentType,
+		ManualStockTotal:     req.ManualStockTotal,
+		SKUs:                 toProductSKUInputs(req.SKUs),
+		IsAffiliateEnabled:   req.IsAffiliateEnabled,
+		IsActive:             req.IsActive,
+		SortOrder:            req.SortOrder,
+	})
+	if err != nil {
+		if errors.Is(err, service.ErrNotFound) {
+			shared.RespondError(c, response.CodeNotFound, "error.product_not_found", nil)
+			return
+		}
+		if errors.Is(err, service.ErrSlugExists) {
+			shared.RespondError(c, response.CodeBadRequest, "error.slug_used", nil)
+			return
+		}
+		if errors.Is(err, service.ErrProductPriceInvalid) {
+			shared.RespondError(c, response.CodeBadRequest, "error.product_price_invalid", nil)
+			return
+		}
+		if errors.Is(err, service.ErrProductPurchaseInvalid) {
+			shared.RespondError(c, response.CodeBadRequest, "error.product_purchase_invalid", nil)
+			return
+		}
+		if errors.Is(err, service.ErrFulfillmentInvalid) {
+			shared.RespondError(c, response.CodeBadRequest, "error.fulfillment_invalid", nil)
+			return
+		}
+		if errors.Is(err, service.ErrManualFormSchemaInvalid) {
+			shared.RespondError(c, response.CodeBadRequest, "error.manual_form_schema_invalid", nil)
+			return
+		}
+		if errors.Is(err, service.ErrManualStockInvalid) {
+			shared.RespondError(c, response.CodeBadRequest, "error.manual_stock_invalid", nil)
+			return
+		}
+		if errors.Is(err, service.ErrProductSKUInvalid) {
+			shared.RespondError(c, response.CodeBadRequest, "error.bad_request", nil)
+			return
+		}
+		shared.RespondError(c, response.CodeInternal, "error.product_update_failed", err)
+		return
+	}
+
+	response.Success(c, product)
+}
+
+// DeleteProduct 删除商品（软删除）
+func (h *Handler) DeleteProduct(c *gin.Context) {
+	id := c.Param("id")
+
+	if err := h.ProductService.Delete(id); err != nil {
+		if errors.Is(err, service.ErrNotFound) {
+			shared.RespondError(c, response.CodeNotFound, "error.product_not_found", nil)
+			return
+		}
+		shared.RespondError(c, response.CodeInternal, "error.product_delete_failed", err)
+		return
+	}
+
+	response.Success(c, nil)
+}

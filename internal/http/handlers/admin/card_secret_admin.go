@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dujiao-next/internal/constants"
+	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/http/response"
 	"github.com/dujiao-next/internal/service"
 
@@ -47,13 +48,13 @@ type ExportCardSecretRequest struct {
 
 // CreateCardSecretBatch 批量录入卡密
 func (h *Handler) CreateCardSecretBatch(c *gin.Context) {
-	adminID, ok := getAdminID(c)
+	adminID, ok := shared.GetAdminID(c)
 	if !ok {
 		return
 	}
 	var req CreateCardSecretBatchRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
@@ -69,19 +70,19 @@ func (h *Handler) CreateCardSecretBatch(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrProductSKURequired):
-			respondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
 		case errors.Is(err, service.ErrProductSKUInvalid):
-			respondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
 		case errors.Is(err, service.ErrCardSecretInvalid):
-			respondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
 		case errors.Is(err, service.ErrProductNotFound):
-			respondError(c, response.CodeNotFound, "error.product_not_found", nil)
+			shared.RespondError(c, response.CodeNotFound, "error.product_not_found", nil)
 		case errors.Is(err, service.ErrProductFetchFailed):
-			respondError(c, response.CodeInternal, "error.product_fetch_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.product_fetch_failed", err)
 		case errors.Is(err, service.ErrCardSecretBatchCreateFailed):
-			respondError(c, response.CodeInternal, "error.card_secret_batch_create_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.card_secret_batch_create_failed", err)
 		default:
-			respondError(c, response.CodeInternal, "error.card_secret_create_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.card_secret_create_failed", err)
 		}
 		return
 	}
@@ -95,23 +96,23 @@ func (h *Handler) CreateCardSecretBatch(c *gin.Context) {
 
 // ImportCardSecretCSV 导入 CSV 卡密
 func (h *Handler) ImportCardSecretCSV(c *gin.Context) {
-	adminID, ok := getAdminID(c)
+	adminID, ok := shared.GetAdminID(c)
 	if !ok {
 		return
 	}
 	productID, err := strconv.ParseUint(strings.TrimSpace(c.PostForm("product_id")), 10, 64)
 	if err != nil || productID == 0 {
-		respondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
 		return
 	}
 	skuID, err := strconv.ParseUint(strings.TrimSpace(c.DefaultPostForm("sku_id", "0")), 10, 64)
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
 		return
 	}
 	file, err := c.FormFile("file")
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
 		return
 	}
 	batchNo := strings.TrimSpace(c.PostForm("batch_no"))
@@ -128,19 +129,19 @@ func (h *Handler) ImportCardSecretCSV(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrProductSKURequired):
-			respondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
 		case errors.Is(err, service.ErrProductSKUInvalid):
-			respondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
 		case errors.Is(err, service.ErrCardSecretInvalid):
-			respondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
 		case errors.Is(err, service.ErrProductNotFound):
-			respondError(c, response.CodeNotFound, "error.product_not_found", nil)
+			shared.RespondError(c, response.CodeNotFound, "error.product_not_found", nil)
 		case errors.Is(err, service.ErrProductFetchFailed):
-			respondError(c, response.CodeInternal, "error.product_fetch_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.product_fetch_failed", err)
 		case errors.Is(err, service.ErrCardSecretBatchCreateFailed):
-			respondError(c, response.CodeInternal, "error.card_secret_batch_create_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.card_secret_batch_create_failed", err)
 		default:
-			respondError(c, response.CodeInternal, "error.card_secret_import_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.card_secret_import_failed", err)
 		}
 		return
 	}
@@ -159,7 +160,7 @@ func (h *Handler) GetCardSecrets(c *gin.Context) {
 	if rawProductID != "" {
 		parsed, err := strconv.ParseUint(rawProductID, 10, 64)
 		if err != nil {
-			respondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
 			return
 		}
 		productID = parsed
@@ -169,14 +170,14 @@ func (h *Handler) GetCardSecrets(c *gin.Context) {
 	if rawSKUID != "" {
 		parsed, err := strconv.ParseUint(rawSKUID, 10, 64)
 		if err != nil {
-			respondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
 			return
 		}
 		skuID = parsed
 	}
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	page, pageSize = normalizePagination(page, pageSize)
+	page, pageSize = shared.NormalizePagination(page, pageSize)
 	status := strings.TrimSpace(c.Query("status"))
 
 	items, total, err := h.CardSecretService.ListCardSecrets(service.ListCardSecretInput{
@@ -189,13 +190,13 @@ func (h *Handler) GetCardSecrets(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrProductSKURequired):
-			respondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
 		case errors.Is(err, service.ErrProductSKUInvalid):
-			respondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
 		case errors.Is(err, service.ErrCardSecretInvalid):
-			respondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
 		default:
-			respondError(c, response.CodeInternal, "error.card_secret_fetch_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.card_secret_fetch_failed", err)
 		}
 		return
 	}
@@ -208,13 +209,13 @@ func (h *Handler) GetCardSecrets(c *gin.Context) {
 func (h *Handler) UpdateCardSecret(c *gin.Context) {
 	rawID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil || rawID == 0 {
-		respondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
 		return
 	}
 
 	var req UpdateCardSecretRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
@@ -227,7 +228,7 @@ func (h *Handler) UpdateCardSecret(c *gin.Context) {
 		status = *req.Status
 	}
 	if strings.TrimSpace(secret) == "" && strings.TrimSpace(status) == "" {
-		respondError(c, response.CodeBadRequest, "error.bad_request", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", nil)
 		return
 	}
 
@@ -235,13 +236,13 @@ func (h *Handler) UpdateCardSecret(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrNotFound):
-			respondError(c, response.CodeNotFound, "error.card_secret_not_found", nil)
+			shared.RespondError(c, response.CodeNotFound, "error.card_secret_not_found", nil)
 		case errors.Is(err, service.ErrCardSecretInvalid):
-			respondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
 		case errors.Is(err, service.ErrCardSecretUpdateFailed):
-			respondError(c, response.CodeInternal, "error.card_secret_update_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.card_secret_update_failed", err)
 		default:
-			respondError(c, response.CodeInternal, "error.card_secret_update_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.card_secret_update_failed", err)
 		}
 		return
 	}
@@ -253,7 +254,7 @@ func (h *Handler) UpdateCardSecret(c *gin.Context) {
 func (h *Handler) BatchUpdateCardSecretStatus(c *gin.Context) {
 	var req BatchUpdateCardSecretStatusRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
@@ -261,11 +262,11 @@ func (h *Handler) BatchUpdateCardSecretStatus(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrCardSecretInvalid):
-			respondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
 		case errors.Is(err, service.ErrCardSecretUpdateFailed):
-			respondError(c, response.CodeInternal, "error.card_secret_update_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.card_secret_update_failed", err)
 		default:
-			respondError(c, response.CodeInternal, "error.card_secret_update_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.card_secret_update_failed", err)
 		}
 		return
 	}
@@ -279,7 +280,7 @@ func (h *Handler) BatchUpdateCardSecretStatus(c *gin.Context) {
 func (h *Handler) BatchDeleteCardSecrets(c *gin.Context) {
 	var req BatchDeleteCardSecretRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
@@ -287,11 +288,11 @@ func (h *Handler) BatchDeleteCardSecrets(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrCardSecretInvalid):
-			respondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
 		case errors.Is(err, service.ErrCardSecretDeleteFailed):
-			respondError(c, response.CodeInternal, "error.card_secret_delete_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.card_secret_delete_failed", err)
 		default:
-			respondError(c, response.CodeInternal, "error.card_secret_delete_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.card_secret_delete_failed", err)
 		}
 		return
 	}
@@ -305,7 +306,7 @@ func (h *Handler) BatchDeleteCardSecrets(c *gin.Context) {
 func (h *Handler) ExportCardSecrets(c *gin.Context) {
 	var req ExportCardSecretRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
@@ -313,11 +314,11 @@ func (h *Handler) ExportCardSecrets(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrCardSecretInvalid):
-			respondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
 		case errors.Is(err, service.ErrNotFound):
-			respondError(c, response.CodeNotFound, "error.card_secret_not_found", nil)
+			shared.RespondError(c, response.CodeNotFound, "error.card_secret_not_found", nil)
 		default:
-			respondError(c, response.CodeInternal, "error.card_secret_fetch_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.card_secret_fetch_failed", err)
 		}
 		return
 	}
@@ -333,25 +334,25 @@ func (h *Handler) ExportCardSecrets(c *gin.Context) {
 func (h *Handler) GetCardSecretStats(c *gin.Context) {
 	productID, err := strconv.ParseUint(strings.TrimSpace(c.Query("product_id")), 10, 64)
 	if err != nil || productID == 0 {
-		respondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
 		return
 	}
 	skuID, err := strconv.ParseUint(strings.TrimSpace(c.DefaultQuery("sku_id", "0")), 10, 64)
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
 		return
 	}
 	stats, err := h.CardSecretService.GetStats(uint(productID), uint(skuID))
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrProductSKURequired):
-			respondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
 		case errors.Is(err, service.ErrProductSKUInvalid):
-			respondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
 		case errors.Is(err, service.ErrCardSecretInvalid):
-			respondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
 		default:
-			respondError(c, response.CodeInternal, "error.card_secret_stats_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.card_secret_stats_failed", err)
 		}
 		return
 	}
@@ -362,15 +363,15 @@ func (h *Handler) GetCardSecretStats(c *gin.Context) {
 func (h *Handler) GetCardSecretBatches(c *gin.Context) {
 	productID, err := strconv.ParseUint(strings.TrimSpace(c.Query("product_id")), 10, 64)
 	if err != nil || productID == 0 {
-		respondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
 		return
 	}
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	page, pageSize = normalizePagination(page, pageSize)
+	page, pageSize = shared.NormalizePagination(page, pageSize)
 	skuID, err := strconv.ParseUint(strings.TrimSpace(c.DefaultQuery("sku_id", "0")), 10, 64)
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
 		return
 	}
 
@@ -378,13 +379,13 @@ func (h *Handler) GetCardSecretBatches(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrProductSKURequired):
-			respondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
 		case errors.Is(err, service.ErrProductSKUInvalid):
-			respondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
 		case errors.Is(err, service.ErrCardSecretInvalid):
-			respondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.card_secret_invalid", nil)
 		default:
-			respondError(c, response.CodeInternal, "error.card_secret_batch_fetch_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.card_secret_batch_fetch_failed", err)
 		}
 		return
 	}

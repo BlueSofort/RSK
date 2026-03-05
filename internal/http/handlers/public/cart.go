@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strconv"
 
+	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/http/response"
 	"github.com/dujiao-next/internal/models"
 	"github.com/dujiao-next/internal/service"
@@ -46,7 +47,7 @@ type CartItemResponse struct {
 
 // GetCart 获取购物车
 func (h *Handler) GetCart(c *gin.Context) {
-	uid, ok := getUserID(c)
+	uid, ok := shared.GetUserID(c)
 	if !ok {
 		return
 	}
@@ -55,15 +56,15 @@ func (h *Handler) GetCart(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrInvalidOrderItem):
-			respondError(c, response.CodeBadRequest, "error.order_item_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.order_item_invalid", nil)
 		case errors.Is(err, service.ErrProductNotAvailable):
-			respondError(c, response.CodeBadRequest, "error.product_not_available", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.product_not_available", nil)
 		case errors.Is(err, service.ErrFulfillmentInvalid):
-			respondError(c, response.CodeBadRequest, "error.fulfillment_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.fulfillment_invalid", nil)
 		case errors.Is(err, service.ErrPromotionInvalid):
-			respondError(c, response.CodeBadRequest, "error.promotion_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.promotion_invalid", nil)
 		default:
-			respondError(c, response.CodeInternal, "error.order_fetch_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.order_fetch_failed", err)
 		}
 		return
 	}
@@ -101,18 +102,18 @@ func (h *Handler) GetCart(c *gin.Context) {
 
 // UpsertCartItem 添加/更新购物车项
 func (h *Handler) UpsertCartItem(c *gin.Context) {
-	uid, ok := getUserID(c)
+	uid, ok := shared.GetUserID(c)
 	if !ok {
 		return
 	}
 	var req CartItemRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 	if req.Quantity <= 0 {
 		if err := h.CartService.RemoveItem(uid, req.ProductID, req.SKUID); err != nil {
-			respondError(c, response.CodeInternal, "error.order_update_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.order_update_failed", err)
 			return
 		}
 		response.Success(c, gin.H{"updated": true})
@@ -127,19 +128,19 @@ func (h *Handler) UpsertCartItem(c *gin.Context) {
 	}); err != nil {
 		switch {
 		case errors.Is(err, service.ErrProductSKURequired):
-			respondError(c, response.CodeBadRequest, "error.order_item_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.order_item_invalid", nil)
 		case errors.Is(err, service.ErrProductSKUInvalid):
-			respondError(c, response.CodeBadRequest, "error.order_item_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.order_item_invalid", nil)
 		case errors.Is(err, service.ErrInvalidOrderItem):
-			respondError(c, response.CodeBadRequest, "error.order_item_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.order_item_invalid", nil)
 		case errors.Is(err, service.ErrProductNotAvailable):
-			respondError(c, response.CodeBadRequest, "error.product_not_available", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.product_not_available", nil)
 		case errors.Is(err, service.ErrManualStockInsufficient):
-			respondError(c, response.CodeBadRequest, "error.manual_stock_insufficient", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.manual_stock_insufficient", nil)
 		case errors.Is(err, service.ErrFulfillmentInvalid):
-			respondError(c, response.CodeBadRequest, "error.fulfillment_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.fulfillment_invalid", nil)
 		default:
-			respondError(c, response.CodeInternal, "error.order_update_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.order_update_failed", err)
 		}
 		return
 	}
@@ -148,23 +149,23 @@ func (h *Handler) UpsertCartItem(c *gin.Context) {
 
 // DeleteCartItem 删除购物车项
 func (h *Handler) DeleteCartItem(c *gin.Context) {
-	uid, ok := getUserID(c)
+	uid, ok := shared.GetUserID(c)
 	if !ok {
 		return
 	}
 	rawID := c.Param("product_id")
 	productID, err := strconv.ParseUint(rawID, 10, 64)
 	if err != nil || productID == 0 {
-		respondError(c, response.CodeBadRequest, "error.order_item_invalid", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.order_item_invalid", nil)
 		return
 	}
 	skuID, _ := strconv.ParseUint(c.DefaultQuery("sku_id", "0"), 10, 64)
 	if err := h.CartService.RemoveItem(uid, uint(productID), uint(skuID)); err != nil {
 		switch {
 		case errors.Is(err, service.ErrInvalidOrderItem):
-			respondError(c, response.CodeBadRequest, "error.order_item_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.order_item_invalid", nil)
 		default:
-			respondError(c, response.CodeInternal, "error.order_update_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.order_update_failed", err)
 		}
 		return
 	}

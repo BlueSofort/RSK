@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dujiao-next/internal/constants"
+	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/models"
 	"github.com/dujiao-next/internal/payment/epusdt"
 	"github.com/dujiao-next/internal/service"
@@ -18,7 +19,7 @@ import (
 
 // HandleEpusdtCallback 处理 BEpusdt 回调
 func (h *Handler) HandleEpusdtCallback(c *gin.Context) bool {
-	log := requestLog(c)
+	log := shared.RequestLog(c)
 
 	// 读取请求体
 	body, err := io.ReadAll(c.Request.Body)

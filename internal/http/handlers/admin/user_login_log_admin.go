@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/http/response"
 	"github.com/dujiao-next/internal/repository"
 
@@ -14,7 +15,7 @@ import (
 func (h *Handler) GetUserLoginLogs(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	page, pageSize = normalizePagination(page, pageSize)
+	page, pageSize = shared.NormalizePagination(page, pageSize)
 
 	userIDRaw := strings.TrimSpace(c.Query("user_id"))
 	email := strings.TrimSpace(c.Query("email"))
@@ -28,20 +29,20 @@ func (h *Handler) GetUserLoginLogs(c *gin.Context) {
 	if userIDRaw != "" {
 		raw, err := strconv.ParseUint(userIDRaw, 10, 64)
 		if err != nil {
-			respondError(c, response.CodeBadRequest, "error.bad_request", err)
+			shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 			return
 		}
 		userID = uint(raw)
 	}
 
-	createdFrom, err := parseTimeNullable(createdFromRaw)
+	createdFrom, err := shared.ParseTimeNullable(createdFromRaw)
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
-	createdTo, err := parseTimeNullable(createdToRaw)
+	createdTo, err := shared.ParseTimeNullable(createdToRaw)
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
@@ -57,7 +58,7 @@ func (h *Handler) GetUserLoginLogs(c *gin.Context) {
 		CreatedTo:   createdTo,
 	})
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.user_login_log_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.user_login_log_fetch_failed", err)
 		return
 	}
 
