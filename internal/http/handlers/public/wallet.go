@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/dujiao-next/internal/constants"
+	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/http/response"
 	"github.com/dujiao-next/internal/models"
 	"github.com/dujiao-next/internal/repository"
@@ -25,13 +26,13 @@ type WalletRechargeRequest struct {
 
 // GetMyWallet 获取当前用户钱包信息
 func (h *Handler) GetMyWallet(c *gin.Context) {
-	uid, ok := getUserID(c)
+	uid, ok := shared.GetUserID(c)
 	if !ok {
 		return
 	}
 	account, err := h.WalletService.GetAccount(uid)
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.user_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.user_fetch_failed", err)
 		return
 	}
 	response.Success(c, account)
@@ -39,13 +40,13 @@ func (h *Handler) GetMyWallet(c *gin.Context) {
 
 // GetMyWalletTransactions 获取当前用户钱包流水
 func (h *Handler) GetMyWalletTransactions(c *gin.Context) {
-	uid, ok := getUserID(c)
+	uid, ok := shared.GetUserID(c)
 	if !ok {
 		return
 	}
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	page, pageSize = normalizePagination(page, pageSize)
+	page, pageSize = shared.NormalizePagination(page, pageSize)
 
 	transactions, total, err := h.WalletService.ListTransactions(repository.WalletTransactionListFilter{
 		Page:     page,
@@ -53,7 +54,7 @@ func (h *Handler) GetMyWalletTransactions(c *gin.Context) {
 		UserID:   uid,
 	})
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.user_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.user_fetch_failed", err)
 		return
 	}
 
@@ -63,18 +64,18 @@ func (h *Handler) GetMyWalletTransactions(c *gin.Context) {
 
 // RechargeWallet 用户充值钱包余额
 func (h *Handler) RechargeWallet(c *gin.Context) {
-	uid, ok := getUserID(c)
+	uid, ok := shared.GetUserID(c)
 	if !ok {
 		return
 	}
 	var req WalletRechargeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 	amount, err := decimal.NewFromString(strings.TrimSpace(req.Amount))
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 	currency := strings.TrimSpace(req.Currency)
@@ -96,9 +97,9 @@ func (h *Handler) RechargeWallet(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrWalletInvalidAmount):
-			respondError(c, response.CodeBadRequest, "error.bad_request", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.bad_request", nil)
 		case errors.Is(err, service.ErrWalletNotSupportedForGuest):
-			respondError(c, response.CodeBadRequest, "error.payment_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.payment_invalid", nil)
 		default:
 			respondPaymentCreateError(c, err)
 		}
@@ -106,7 +107,7 @@ func (h *Handler) RechargeWallet(c *gin.Context) {
 	}
 	account, err := h.WalletService.GetAccount(uid)
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.user_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.user_fetch_failed", err)
 		return
 	}
 	response.Success(c, buildWalletRechargePaymentPayload(result.Recharge, result.Payment, account))
@@ -114,22 +115,22 @@ func (h *Handler) RechargeWallet(c *gin.Context) {
 
 // GetMyWalletRecharge 获取当前用户充值单详情
 func (h *Handler) GetMyWalletRecharge(c *gin.Context) {
-	uid, ok := getUserID(c)
+	uid, ok := shared.GetUserID(c)
 	if !ok {
 		return
 	}
 	rechargeNo := strings.TrimSpace(c.Param("recharge_no"))
 	if rechargeNo == "" {
-		respondError(c, response.CodeBadRequest, "error.bad_request", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", nil)
 		return
 	}
 	recharge, err := h.WalletService.GetRechargeOrderByRechargeNo(uid, rechargeNo)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrWalletRechargeNotFound):
-			respondError(c, response.CodeNotFound, "error.payment_not_found", nil)
+			shared.RespondError(c, response.CodeNotFound, "error.payment_not_found", nil)
 		default:
-			respondError(c, response.CodeInternal, "error.payment_fetch_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.payment_fetch_failed", err)
 		}
 		return
 	}
@@ -140,7 +141,7 @@ func (h *Handler) GetMyWalletRecharge(c *gin.Context) {
 	}
 	account, err := h.WalletService.GetAccount(uid)
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.user_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.user_fetch_failed", err)
 		return
 	}
 	response.Success(c, buildWalletRechargePaymentPayload(recharge, payment, account))
@@ -148,22 +149,22 @@ func (h *Handler) GetMyWalletRecharge(c *gin.Context) {
 
 // CaptureMyWalletRechargePayment 主动检查当前用户充值支付状态
 func (h *Handler) CaptureMyWalletRechargePayment(c *gin.Context) {
-	uid, ok := getUserID(c)
+	uid, ok := shared.GetUserID(c)
 	if !ok {
 		return
 	}
 	paymentID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil || paymentID == 0 {
-		respondError(c, response.CodeBadRequest, "error.payment_invalid", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.payment_invalid", nil)
 		return
 	}
 	recharge, err := h.WalletService.GetRechargeOrderByPaymentIDAndUser(uint(paymentID), uid)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrWalletRechargeNotFound):
-			respondError(c, response.CodeNotFound, "error.payment_not_found", nil)
+			shared.RespondError(c, response.CodeNotFound, "error.payment_not_found", nil)
 		default:
-			respondError(c, response.CodeInternal, "error.payment_fetch_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.payment_fetch_failed", err)
 		}
 		return
 	}
@@ -185,12 +186,12 @@ func (h *Handler) CaptureMyWalletRechargePayment(c *gin.Context) {
 	}
 	updatedRecharge, err := h.WalletService.GetRechargeOrderByRechargeNo(uid, recharge.RechargeNo)
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.payment_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.payment_fetch_failed", err)
 		return
 	}
 	account, err := h.WalletService.GetAccount(uid)
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.user_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.user_fetch_failed", err)
 		return
 	}
 	response.Success(c, buildWalletRechargePaymentPayload(updatedRecharge, updatedPayment, account))

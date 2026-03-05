@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/http/response"
 	"github.com/dujiao-next/internal/service"
 
@@ -14,7 +15,7 @@ import (
 func (h *Handler) GetNotificationCenterSettings(c *gin.Context) {
 	setting, err := h.SettingService.GetNotificationCenterSetting()
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.settings_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.settings_fetch_failed", err)
 		return
 	}
 	response.Success(c, service.MaskNotificationCenterSettingForAdmin(setting))
@@ -24,7 +25,7 @@ func (h *Handler) GetNotificationCenterSettings(c *gin.Context) {
 func (h *Handler) UpdateNotificationCenterSettings(c *gin.Context) {
 	var req service.NotificationCenterSettingPatch
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
@@ -32,9 +33,9 @@ func (h *Handler) UpdateNotificationCenterSettings(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrNotificationConfigInvalid):
-			respondErrorWithMsg(c, response.CodeBadRequest, err.Error(), nil)
+			shared.RespondErrorWithMsg(c, response.CodeBadRequest, err.Error(), nil)
 		default:
-			respondError(c, response.CodeInternal, "error.settings_save_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.settings_save_failed", err)
 		}
 		return
 	}
@@ -54,17 +55,17 @@ type NotificationCenterTestSendRequest struct {
 func (h *Handler) TestNotificationCenterSettings(c *gin.Context) {
 	var req NotificationCenterTestSendRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 	channel := strings.ToLower(strings.TrimSpace(req.Channel))
 	if channel != "email" && channel != "telegram" {
-		respondError(c, response.CodeBadRequest, "error.bad_request", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", nil)
 		return
 	}
 
 	if h.NotificationService == nil {
-		respondError(c, response.CodeInternal, "error.notification_send_failed", nil)
+		shared.RespondError(c, response.CodeInternal, "error.notification_send_failed", nil)
 		return
 	}
 
@@ -78,9 +79,9 @@ func (h *Handler) TestNotificationCenterSettings(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrNotificationConfigInvalid):
-			respondErrorWithMsg(c, response.CodeBadRequest, err.Error(), nil)
+			shared.RespondErrorWithMsg(c, response.CodeBadRequest, err.Error(), nil)
 		default:
-			respondError(c, response.CodeInternal, "error.notification_send_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.notification_send_failed", err)
 		}
 		return
 	}

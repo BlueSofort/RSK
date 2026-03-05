@@ -47,12 +47,12 @@ type GiftCardRepository interface {
 
 // GormGiftCardRepository GORM 礼品卡仓储实现
 type GormGiftCardRepository struct {
-	db *gorm.DB
+	BaseRepository
 }
 
 // NewGiftCardRepository 创建礼品卡仓储
 func NewGiftCardRepository(db *gorm.DB) *GormGiftCardRepository {
-	return &GormGiftCardRepository{db: db}
+	return &GormGiftCardRepository{BaseRepository: BaseRepository{db: db}}
 }
 
 // WithTx 绑定事务
@@ -60,15 +60,7 @@ func (r *GormGiftCardRepository) WithTx(tx *gorm.DB) *GormGiftCardRepository {
 	if tx == nil {
 		return r
 	}
-	return &GormGiftCardRepository{db: tx}
-}
-
-// Transaction 执行事务
-func (r *GormGiftCardRepository) Transaction(fn func(tx *gorm.DB) error) error {
-	if fn == nil {
-		return nil
-	}
-	return r.db.Transaction(fn)
+	return &GormGiftCardRepository{BaseRepository: BaseRepository{db: tx}}
 }
 
 // CreateBatch 创建礼品卡批次与卡片

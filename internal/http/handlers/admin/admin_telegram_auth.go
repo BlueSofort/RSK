@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/dujiao-next/internal/cache"
+	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/http/response"
 	"github.com/dujiao-next/internal/service"
 
@@ -14,7 +15,7 @@ import (
 func (h *Handler) GetTelegramAuthSettings(c *gin.Context) {
 	setting, err := h.SettingService.GetTelegramAuthSetting(h.Config.TelegramAuth)
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.settings_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.settings_fetch_failed", err)
 		return
 	}
 	response.Success(c, service.MaskTelegramAuthSettingForAdmin(setting))
@@ -24,7 +25,7 @@ func (h *Handler) GetTelegramAuthSettings(c *gin.Context) {
 func (h *Handler) UpdateTelegramAuthSettings(c *gin.Context) {
 	var req service.TelegramAuthSettingPatch
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
@@ -32,9 +33,9 @@ func (h *Handler) UpdateTelegramAuthSettings(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrTelegramAuthConfigInvalid):
-			respondErrorWithMsg(c, response.CodeBadRequest, err.Error(), nil)
+			shared.RespondErrorWithMsg(c, response.CodeBadRequest, err.Error(), nil)
 		default:
-			respondError(c, response.CodeInternal, "error.settings_save_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.settings_save_failed", err)
 		}
 		return
 	}

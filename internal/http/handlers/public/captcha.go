@@ -3,6 +3,7 @@ package public
 import (
 	"errors"
 
+	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/http/response"
 	"github.com/dujiao-next/internal/service"
 
@@ -12,7 +13,7 @@ import (
 // GetImageCaptcha 获取图片验证码挑战
 func (h *Handler) GetImageCaptcha(c *gin.Context) {
 	if h.CaptchaService == nil {
-		respondError(c, response.CodeInternal, "error.captcha_unavailable", service.ErrCaptchaConfigInvalid)
+		shared.RespondError(c, response.CodeInternal, "error.captcha_unavailable", service.ErrCaptchaConfigInvalid)
 		return
 	}
 
@@ -20,9 +21,9 @@ func (h *Handler) GetImageCaptcha(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrCaptchaConfigInvalid):
-			respondError(c, response.CodeBadRequest, "error.captcha_unavailable", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.captcha_unavailable", nil)
 		default:
-			respondError(c, response.CodeInternal, "error.captcha_generate_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.captcha_generate_failed", err)
 		}
 		return
 	}

@@ -6,6 +6,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// GetAdminID 从上下文读取管理员 ID。
+func GetAdminID(c *gin.Context) (uint, bool) {
+	return GetContextUintWithKeys(c, "admin_id", "error.admin_id_invalid", "error.admin_id_type_invalid")
+}
+
+// GetUserID 从上下文读取用户 ID。
+func GetUserID(c *gin.Context) (uint, bool) {
+	return GetContextUintWithKeys(c, "user_id", "error.user_id_invalid", "error.user_id_type_invalid")
+}
+
 // GetContextUintWithKeys 从上下文读取 uint 值并统一处理错误响应。
 func GetContextUintWithKeys(c *gin.Context, key, invalidKey, typeInvalidKey string) (uint, bool) {
 	value, exists := c.Get(key)

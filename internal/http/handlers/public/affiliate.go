@@ -5,10 +5,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/dujiao-next/internal/http/response"
-	"github.com/dujiao-next/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
+
+	"github.com/dujiao-next/internal/http/handlers/shared"
+	"github.com/dujiao-next/internal/http/response"
+	"github.com/dujiao-next/internal/service"
 )
 
 // AffiliateTrackClickRequest 推广点击记录请求
@@ -23,7 +25,7 @@ type AffiliateTrackClickRequest struct {
 func (h *Handler) TrackAffiliateClick(c *gin.Context) {
 	var req AffiliateTrackClickRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
@@ -36,7 +38,7 @@ func (h *Handler) TrackAffiliateClick(c *gin.Context) {
 			ClientIP:      c.ClientIP(),
 			UserAgent:     c.GetHeader("User-Agent"),
 		}); err != nil {
-			respondError(c, response.CodeInternal, "error.save_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.save_failed", err)
 			return
 		}
 	}
@@ -45,12 +47,12 @@ func (h *Handler) TrackAffiliateClick(c *gin.Context) {
 
 // OpenAffiliate 开通推广返利
 func (h *Handler) OpenAffiliate(c *gin.Context) {
-	uid, ok := getUserID(c)
+	uid, ok := shared.GetUserID(c)
 	if !ok {
 		return
 	}
 	if h.AffiliateService == nil {
-		respondError(c, response.CodeInternal, "error.save_failed", nil)
+		shared.RespondError(c, response.CodeInternal, "error.save_failed", nil)
 		return
 	}
 
@@ -58,11 +60,11 @@ func (h *Handler) OpenAffiliate(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrAffiliateDisabled):
-			respondError(c, response.CodeBadRequest, "error.forbidden", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.forbidden", nil)
 		case errors.Is(err, service.ErrNotFound):
-			respondError(c, response.CodeNotFound, "error.user_not_found", nil)
+			shared.RespondError(c, response.CodeNotFound, "error.user_not_found", nil)
 		default:
-			respondError(c, response.CodeInternal, "error.save_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.save_failed", err)
 		}
 		return
 	}
@@ -71,17 +73,17 @@ func (h *Handler) OpenAffiliate(c *gin.Context) {
 
 // GetAffiliateDashboard 获取推广返利看板
 func (h *Handler) GetAffiliateDashboard(c *gin.Context) {
-	uid, ok := getUserID(c)
+	uid, ok := shared.GetUserID(c)
 	if !ok {
 		return
 	}
 	if h.AffiliateService == nil {
-		respondError(c, response.CodeInternal, "error.user_fetch_failed", nil)
+		shared.RespondError(c, response.CodeInternal, "error.user_fetch_failed", nil)
 		return
 	}
 	data, err := h.AffiliateService.GetUserDashboard(uid)
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.user_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.user_fetch_failed", err)
 		return
 	}
 	response.Success(c, data)
@@ -89,22 +91,22 @@ func (h *Handler) GetAffiliateDashboard(c *gin.Context) {
 
 // ListAffiliateCommissions 查询我的推广佣金记录
 func (h *Handler) ListAffiliateCommissions(c *gin.Context) {
-	uid, ok := getUserID(c)
+	uid, ok := shared.GetUserID(c)
 	if !ok {
 		return
 	}
 	if h.AffiliateService == nil {
-		respondError(c, response.CodeInternal, "error.user_fetch_failed", nil)
+		shared.RespondError(c, response.CodeInternal, "error.user_fetch_failed", nil)
 		return
 	}
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	page, pageSize = normalizePagination(page, pageSize)
+	page, pageSize = shared.NormalizePagination(page, pageSize)
 	status := strings.TrimSpace(c.Query("status"))
 
 	rows, total, err := h.AffiliateService.ListUserCommissions(uid, page, pageSize, status)
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.user_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.user_fetch_failed", err)
 		return
 	}
 	response.SuccessWithPage(c, rows, response.BuildPagination(page, pageSize, total))
@@ -112,22 +114,22 @@ func (h *Handler) ListAffiliateCommissions(c *gin.Context) {
 
 // ListAffiliateWithdraws 查询我的提现申请记录
 func (h *Handler) ListAffiliateWithdraws(c *gin.Context) {
-	uid, ok := getUserID(c)
+	uid, ok := shared.GetUserID(c)
 	if !ok {
 		return
 	}
 	if h.AffiliateService == nil {
-		respondError(c, response.CodeInternal, "error.user_fetch_failed", nil)
+		shared.RespondError(c, response.CodeInternal, "error.user_fetch_failed", nil)
 		return
 	}
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	page, pageSize = normalizePagination(page, pageSize)
+	page, pageSize = shared.NormalizePagination(page, pageSize)
 	status := strings.TrimSpace(c.Query("status"))
 
 	rows, total, err := h.AffiliateService.ListUserWithdraws(uid, page, pageSize, status)
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.user_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.user_fetch_failed", err)
 		return
 	}
 	response.SuccessWithPage(c, rows, response.BuildPagination(page, pageSize, total))
@@ -142,23 +144,23 @@ type AffiliateWithdrawApplyRequest struct {
 
 // ApplyAffiliateWithdraw 提交提现申请
 func (h *Handler) ApplyAffiliateWithdraw(c *gin.Context) {
-	uid, ok := getUserID(c)
+	uid, ok := shared.GetUserID(c)
 	if !ok {
 		return
 	}
 	if h.AffiliateService == nil {
-		respondError(c, response.CodeInternal, "error.save_failed", nil)
+		shared.RespondError(c, response.CodeInternal, "error.save_failed", nil)
 		return
 	}
 
 	var req AffiliateWithdrawApplyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 	amount, err := decimal.NewFromString(strings.TrimSpace(req.Amount))
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", nil)
 		return
 	}
 
@@ -170,17 +172,17 @@ func (h *Handler) ApplyAffiliateWithdraw(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrAffiliateDisabled):
-			respondError(c, response.CodeBadRequest, "error.forbidden", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.forbidden", nil)
 		case errors.Is(err, service.ErrAffiliateNotOpened):
-			respondError(c, response.CodeBadRequest, "error.bad_request", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.bad_request", nil)
 		case errors.Is(err, service.ErrAffiliateWithdrawAmountInvalid):
-			respondError(c, response.CodeBadRequest, "error.bad_request", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.bad_request", nil)
 		case errors.Is(err, service.ErrAffiliateWithdrawChannelInvalid):
-			respondError(c, response.CodeBadRequest, "error.bad_request", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.bad_request", nil)
 		case errors.Is(err, service.ErrAffiliateWithdrawInsufficient):
-			respondError(c, response.CodeBadRequest, "error.bad_request", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.bad_request", nil)
 		default:
-			respondError(c, response.CodeInternal, "error.save_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.save_failed", err)
 		}
 		return
 	}

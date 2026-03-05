@@ -181,7 +181,20 @@ func (c *Container) initServices() {
 	c.CategoryService = service.NewCategoryService(c.CategoryRepo)
 	c.CartService = service.NewCartService(c.CartRepo, c.ProductRepo, c.ProductSKURepo, c.PromotionRepo, c.SettingService)
 	c.WalletService = service.NewWalletService(c.WalletRepo, c.OrderRepo, c.UserRepo, c.AffiliateService)
-	c.OrderService = service.NewOrderService(c.OrderRepo, c.ProductRepo, c.ProductSKURepo, c.CardSecretRepo, c.CouponRepo, c.CouponUsageRepo, c.PromotionRepo, c.QueueClient, c.SettingService, c.WalletService, c.AffiliateService, c.Config.Order.PaymentExpireMinutes)
+	c.OrderService = service.NewOrderService(service.OrderServiceOptions{
+		OrderRepo:        c.OrderRepo,
+		ProductRepo:      c.ProductRepo,
+		ProductSKURepo:   c.ProductSKURepo,
+		CardSecretRepo:   c.CardSecretRepo,
+		CouponRepo:       c.CouponRepo,
+		CouponUsageRepo:  c.CouponUsageRepo,
+		PromotionRepo:    c.PromotionRepo,
+		QueueClient:      c.QueueClient,
+		SettingService:   c.SettingService,
+		WalletService:    c.WalletService,
+		AffiliateService: c.AffiliateService,
+		ExpireMinutes:    c.Config.Order.PaymentExpireMinutes,
+	})
 	c.FulfillmentService = service.NewFulfillmentService(c.OrderRepo, c.FulfillmentRepo, c.CardSecretRepo, c.QueueClient)
 	c.CardSecretService = service.NewCardSecretService(c.CardSecretRepo, c.CardSecretBatchRepo, c.ProductRepo, c.ProductSKURepo)
 	c.GiftCardService = service.NewGiftCardService(c.GiftCardRepo, c.UserRepo, c.WalletService, c.SettingService)
@@ -192,18 +205,18 @@ func (c *Container) initServices() {
 	c.AuthzAuditService = service.NewAuthzAuditService(c.AuthzAuditLogRepo)
 	c.DashboardService = service.NewDashboardService(c.DashboardRepo, c.SettingService)
 	c.NotificationService = service.NewNotificationService(c.SettingService, c.EmailService, c.QueueClient, c.DashboardService, c.Config.TelegramAuth)
-	c.PaymentService = service.NewPaymentService(
-		c.OrderRepo,
-		c.ProductRepo,
-		c.ProductSKURepo,
-		c.PaymentRepo,
-		c.PaymentChannelRepo,
-		c.WalletRepo,
-		c.QueueClient,
-		c.WalletService,
-		c.SettingService,
-		c.Config.Order.PaymentExpireMinutes,
-		c.AffiliateService,
-		c.NotificationService,
-	)
+	c.PaymentService = service.NewPaymentService(service.PaymentServiceOptions{
+		OrderRepo:           c.OrderRepo,
+		ProductRepo:         c.ProductRepo,
+		ProductSKURepo:      c.ProductSKURepo,
+		PaymentRepo:         c.PaymentRepo,
+		ChannelRepo:         c.PaymentChannelRepo,
+		WalletRepo:          c.WalletRepo,
+		QueueClient:         c.QueueClient,
+		WalletService:       c.WalletService,
+		SettingService:      c.SettingService,
+		ExpireMinutes:       c.Config.Order.PaymentExpireMinutes,
+		AffiliateService:    c.AffiliateService,
+		NotificationService: c.NotificationService,
+	})
 }

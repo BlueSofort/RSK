@@ -30,12 +30,12 @@ type ProductRepository interface {
 
 // GormProductRepository GORM 实现
 type GormProductRepository struct {
-	db *gorm.DB
+	BaseRepository
 }
 
 // NewProductRepository 创建商品仓库
 func NewProductRepository(db *gorm.DB) *GormProductRepository {
-	return &GormProductRepository{db: db}
+	return &GormProductRepository{BaseRepository: BaseRepository{db: db}}
 }
 
 // WithTx 绑定事务
@@ -43,15 +43,7 @@ func (r *GormProductRepository) WithTx(tx *gorm.DB) ProductRepository {
 	if tx == nil {
 		return r
 	}
-	return &GormProductRepository{db: tx}
-}
-
-// Transaction 执行事务
-func (r *GormProductRepository) Transaction(fn func(tx *gorm.DB) error) error {
-	if fn == nil {
-		return nil
-	}
-	return r.db.Transaction(fn)
+	return &GormProductRepository{BaseRepository: BaseRepository{db: tx}}
 }
 
 // List 商品列表

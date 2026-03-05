@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dujiao-next/internal/constants"
+	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/models"
 	"github.com/dujiao-next/internal/payment/alipay"
 	"github.com/dujiao-next/internal/service"
@@ -17,7 +18,7 @@ import (
 )
 
 func (h *Handler) HandleAlipayCallback(c *gin.Context) bool {
-	log := requestLog(c)
+	log := shared.RequestLog(c)
 	form, err := parseCallbackForm(c)
 	if err != nil {
 		log.Warnw("alipay_callback_form_parse_failed", "error", err)

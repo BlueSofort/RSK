@@ -3,6 +3,7 @@ package admin
 import (
 	"errors"
 
+	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/http/response"
 	"github.com/dujiao-next/internal/service"
 
@@ -13,7 +14,7 @@ import (
 func (h *Handler) GetAffiliateSettings(c *gin.Context) {
 	setting, err := h.SettingService.GetAffiliateSetting()
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.settings_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.settings_fetch_failed", err)
 		return
 	}
 	response.Success(c, setting)
@@ -23,17 +24,17 @@ func (h *Handler) GetAffiliateSettings(c *gin.Context) {
 func (h *Handler) UpdateAffiliateSettings(c *gin.Context) {
 	var req service.AffiliateSetting
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
 	setting, err := h.SettingService.UpdateAffiliateSetting(req)
 	if err != nil {
 		if errors.Is(err, service.ErrAffiliateConfigInvalid) {
-			respondError(c, response.CodeBadRequest, "error.bad_request", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.bad_request", nil)
 			return
 		}
-		respondError(c, response.CodeInternal, "error.settings_save_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.settings_save_failed", err)
 		return
 	}
 	response.Success(c, setting)

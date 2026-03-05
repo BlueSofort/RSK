@@ -3,6 +3,7 @@ package admin
 import (
 	"errors"
 
+	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/http/response"
 	"github.com/dujiao-next/internal/models"
 	"github.com/dujiao-next/internal/service"
@@ -19,14 +20,14 @@ type AdminCreateFulfillmentRequest struct {
 
 // AdminCreateFulfillment 管理端录入交付内容
 func (h *Handler) AdminCreateFulfillment(c *gin.Context) {
-	adminID, ok := getAdminID(c)
+	adminID, ok := shared.GetAdminID(c)
 	if !ok {
 		return
 	}
 
 	var req AdminCreateFulfillmentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
@@ -39,15 +40,15 @@ func (h *Handler) AdminCreateFulfillment(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrFulfillmentExists):
-			respondError(c, response.CodeBadRequest, "error.fulfillment_exists", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.fulfillment_exists", nil)
 		case errors.Is(err, service.ErrFulfillmentInvalid):
-			respondError(c, response.CodeBadRequest, "error.fulfillment_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.fulfillment_invalid", nil)
 		case errors.Is(err, service.ErrOrderStatusInvalid):
-			respondError(c, response.CodeBadRequest, "error.order_status_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.order_status_invalid", nil)
 		case errors.Is(err, service.ErrOrderNotFound):
-			respondError(c, response.CodeNotFound, "error.order_not_found", nil)
+			shared.RespondError(c, response.CodeNotFound, "error.order_not_found", nil)
 		default:
-			respondError(c, response.CodeInternal, "error.fulfillment_create_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.fulfillment_create_failed", err)
 		}
 		return
 	}

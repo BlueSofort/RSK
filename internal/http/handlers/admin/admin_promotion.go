@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/http/response"
 	"github.com/dujiao-next/internal/models"
 	"github.com/dujiao-next/internal/repository"
@@ -30,18 +31,18 @@ type CreatePromotionRequest struct {
 func (h *Handler) CreatePromotion(c *gin.Context) {
 	var req CreatePromotionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
-	startsAt, err := parseTimeNullable(req.StartsAt)
+	startsAt, err := shared.ParseTimeNullable(req.StartsAt)
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
-	endsAt, err := parseTimeNullable(req.EndsAt)
+	endsAt, err := shared.ParseTimeNullable(req.EndsAt)
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
@@ -58,9 +59,9 @@ func (h *Handler) CreatePromotion(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrPromotionInvalid):
-			respondError(c, response.CodeBadRequest, "error.promotion_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.promotion_invalid", nil)
 		default:
-			respondError(c, response.CodeInternal, "error.promotion_create_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.promotion_create_failed", err)
 		}
 		return
 	}
@@ -72,23 +73,23 @@ func (h *Handler) CreatePromotion(c *gin.Context) {
 func (h *Handler) UpdatePromotion(c *gin.Context) {
 	promotionID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil || promotionID == 0 {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 	var req CreatePromotionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
-	startsAt, err := parseTimeNullable(req.StartsAt)
+	startsAt, err := shared.ParseTimeNullable(req.StartsAt)
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
-	endsAt, err := parseTimeNullable(req.EndsAt)
+	endsAt, err := shared.ParseTimeNullable(req.EndsAt)
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
@@ -105,11 +106,11 @@ func (h *Handler) UpdatePromotion(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrPromotionNotFound):
-			respondError(c, response.CodeNotFound, "error.promotion_not_found", nil)
+			shared.RespondError(c, response.CodeNotFound, "error.promotion_not_found", nil)
 		case errors.Is(err, service.ErrPromotionInvalid):
-			respondError(c, response.CodeBadRequest, "error.promotion_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.promotion_invalid", nil)
 		default:
-			respondError(c, response.CodeInternal, "error.promotion_update_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.promotion_update_failed", err)
 		}
 		return
 	}
@@ -121,17 +122,17 @@ func (h *Handler) UpdatePromotion(c *gin.Context) {
 func (h *Handler) DeletePromotion(c *gin.Context) {
 	promotionID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil || promotionID == 0 {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 	if err := h.PromotionAdminService.Delete(uint(promotionID)); err != nil {
 		switch {
 		case errors.Is(err, service.ErrPromotionNotFound):
-			respondError(c, response.CodeNotFound, "error.promotion_not_found", nil)
+			shared.RespondError(c, response.CodeNotFound, "error.promotion_not_found", nil)
 		case errors.Is(err, service.ErrPromotionInvalid):
-			respondError(c, response.CodeBadRequest, "error.promotion_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.promotion_invalid", nil)
 		default:
-			respondError(c, response.CodeInternal, "error.promotion_delete_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.promotion_delete_failed", err)
 		}
 		return
 	}
@@ -144,13 +145,13 @@ func (h *Handler) DeletePromotion(c *gin.Context) {
 func (h *Handler) GetAdminPromotions(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	page, pageSize = normalizePagination(page, pageSize)
+	page, pageSize = shared.NormalizePagination(page, pageSize)
 
 	var id uint
 	if rawID := strings.TrimSpace(c.Query("id")); rawID != "" {
 		parsed, err := strconv.ParseUint(rawID, 10, 64)
 		if err != nil || parsed == 0 {
-			respondError(c, response.CodeBadRequest, "error.bad_request", err)
+			shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 			return
 		}
 		id = uint(parsed)
@@ -162,7 +163,7 @@ func (h *Handler) GetAdminPromotions(c *gin.Context) {
 	if raw := c.Query("is_active"); raw != "" {
 		parsed, err := strconv.ParseBool(raw)
 		if err != nil {
-			respondError(c, response.CodeBadRequest, "error.bad_request", err)
+			shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 			return
 		}
 		isActive = &parsed
@@ -176,7 +177,7 @@ func (h *Handler) GetAdminPromotions(c *gin.Context) {
 		PageSize:   pageSize,
 	})
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.promotion_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.promotion_fetch_failed", err)
 		return
 	}
 

@@ -8,6 +8,7 @@ import (
 
 	"github.com/dujiao-next/internal/cache"
 	"github.com/dujiao-next/internal/constants"
+	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/http/response"
 	"github.com/dujiao-next/internal/models"
 	"github.com/dujiao-next/internal/repository"
@@ -68,7 +69,7 @@ type AdminUserDetail struct {
 func (h *Handler) GetAdminUsers(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	page, pageSize = normalizePagination(page, pageSize)
+	page, pageSize = shared.NormalizePagination(page, pageSize)
 
 	keyword := strings.TrimSpace(c.Query("keyword"))
 	status := strings.TrimSpace(c.Query("status"))
@@ -77,24 +78,24 @@ func (h *Handler) GetAdminUsers(c *gin.Context) {
 	lastLoginFromRaw := strings.TrimSpace(c.Query("last_login_from"))
 	lastLoginToRaw := strings.TrimSpace(c.Query("last_login_to"))
 
-	createdFrom, err := parseTimeNullable(createdFromRaw)
+	createdFrom, err := shared.ParseTimeNullable(createdFromRaw)
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
-	createdTo, err := parseTimeNullable(createdToRaw)
+	createdTo, err := shared.ParseTimeNullable(createdToRaw)
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
-	lastLoginFrom, err := parseTimeNullable(lastLoginFromRaw)
+	lastLoginFrom, err := shared.ParseTimeNullable(lastLoginFromRaw)
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
-	lastLoginTo, err := parseTimeNullable(lastLoginToRaw)
+	lastLoginTo, err := shared.ParseTimeNullable(lastLoginToRaw)
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
@@ -109,7 +110,7 @@ func (h *Handler) GetAdminUsers(c *gin.Context) {
 		LastLoginTo:   lastLoginTo,
 	})
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.user_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.user_fetch_failed", err)
 		return
 	}
 
@@ -119,7 +120,7 @@ func (h *Handler) GetAdminUsers(c *gin.Context) {
 	}
 	balanceMap, err := h.WalletService.GetBalancesByUserIDs(userIDs)
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.user_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.user_fetch_failed", err)
 		return
 	}
 	items := make([]AdminUserListItem, 0, len(users))
@@ -142,22 +143,22 @@ func (h *Handler) GetAdminUsers(c *gin.Context) {
 func (h *Handler) GetAdminUser(c *gin.Context) {
 	rawID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil || rawID == 0 {
-		respondError(c, response.CodeBadRequest, "error.user_id_invalid", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.user_id_invalid", nil)
 		return
 	}
 
 	user, err := h.UserRepo.GetByID(uint(rawID))
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.user_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.user_fetch_failed", err)
 		return
 	}
 	if user == nil {
-		respondError(c, response.CodeNotFound, "error.user_not_found", nil)
+		shared.RespondError(c, response.CodeNotFound, "error.user_not_found", nil)
 		return
 	}
 	account, err := h.WalletService.GetAccount(user.ID)
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.user_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.user_fetch_failed", err)
 		return
 	}
 	response.Success(c, AdminUserDetail{
@@ -170,23 +171,23 @@ func (h *Handler) GetAdminUser(c *gin.Context) {
 func (h *Handler) UpdateAdminUser(c *gin.Context) {
 	rawID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil || rawID == 0 {
-		respondError(c, response.CodeBadRequest, "error.user_id_invalid", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.user_id_invalid", nil)
 		return
 	}
 
 	var req UpdateAdminUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
 	user, err := h.UserRepo.GetByID(uint(rawID))
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.user_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.user_fetch_failed", err)
 		return
 	}
 	if user == nil {
-		respondError(c, response.CodeNotFound, "error.user_not_found", nil)
+		shared.RespondError(c, response.CodeNotFound, "error.user_not_found", nil)
 		return
 	}
 
@@ -195,16 +196,16 @@ func (h *Handler) UpdateAdminUser(c *gin.Context) {
 	if req.Email != nil {
 		normalized, err := service.NormalizeEmail(*req.Email)
 		if err != nil {
-			respondError(c, response.CodeBadRequest, "error.email_invalid", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.email_invalid", nil)
 			return
 		}
 		existing, err := h.UserRepo.GetByEmail(normalized)
 		if err != nil {
-			respondError(c, response.CodeInternal, "error.user_update_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.user_update_failed", err)
 			return
 		}
 		if existing != nil && existing.ID != user.ID {
-			respondError(c, response.CodeBadRequest, "error.email_exists", nil)
+			shared.RespondError(c, response.CodeBadRequest, "error.email_exists", nil)
 			return
 		}
 		if normalized != user.Email {
@@ -224,7 +225,7 @@ func (h *Handler) UpdateAdminUser(c *gin.Context) {
 		if trimmed != "" {
 			hashed, err := bcrypt.GenerateFromPassword([]byte(trimmed), bcrypt.DefaultCost)
 			if err != nil {
-				respondError(c, response.CodeInternal, "error.user_update_failed", err)
+				shared.RespondError(c, response.CodeInternal, "error.user_update_failed", err)
 				return
 			}
 			user.PasswordHash = string(hashed)
@@ -253,7 +254,7 @@ func (h *Handler) UpdateAdminUser(c *gin.Context) {
 	}
 
 	if !updated {
-		respondError(c, response.CodeBadRequest, "error.bad_request", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", nil)
 		return
 	}
 
@@ -264,7 +265,7 @@ func (h *Handler) UpdateAdminUser(c *gin.Context) {
 		user.TokenInvalidBefore = &now
 	}
 	if err := h.UserRepo.Update(user); err != nil {
-		respondError(c, response.CodeInternal, "error.user_update_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.user_update_failed", err)
 		return
 	}
 	_ = cache.SetUserAuthState(c.Request.Context(), cache.BuildUserAuthState(user))
@@ -276,13 +277,13 @@ func (h *Handler) UpdateAdminUser(c *gin.Context) {
 func (h *Handler) GetAdminUserCouponUsages(c *gin.Context) {
 	rawID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil || rawID == 0 {
-		respondError(c, response.CodeBadRequest, "error.user_id_invalid", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.user_id_invalid", nil)
 		return
 	}
 
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	page, pageSize = normalizePagination(page, pageSize)
+	page, pageSize = shared.NormalizePagination(page, pageSize)
 
 	usages, total, err := h.CouponUsageRepo.ListByUser(repository.CouponUsageListFilter{
 		Page:     page,
@@ -290,7 +291,7 @@ func (h *Handler) GetAdminUserCouponUsages(c *gin.Context) {
 		UserID:   uint(rawID),
 	})
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.user_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.user_fetch_failed", err)
 		return
 	}
 
@@ -310,7 +311,7 @@ func (h *Handler) GetAdminUserCouponUsages(c *gin.Context) {
 	if len(couponIDs) > 0 {
 		items, err := h.CouponRepo.ListByIDs(couponIDs)
 		if err != nil {
-			respondError(c, response.CodeInternal, "error.user_fetch_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.user_fetch_failed", err)
 			return
 		}
 		for i := range items {
@@ -337,7 +338,7 @@ func (h *Handler) GetAdminUserCouponUsages(c *gin.Context) {
 		}
 		products, err := h.ProductRepo.ListByIDs(ids)
 		if err != nil {
-			respondError(c, response.CodeInternal, "error.user_fetch_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.user_fetch_failed", err)
 			return
 		}
 		for i := range products {
@@ -395,21 +396,21 @@ func decodeScopeRefIDs(raw string) []uint {
 func (h *Handler) BatchUpdateUserStatus(c *gin.Context) {
 	var req BatchUpdateUserStatusRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 	if len(req.UserIDs) == 0 {
-		respondError(c, response.CodeBadRequest, "error.bad_request", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", nil)
 		return
 	}
 	normalizedStatus := strings.ToLower(strings.TrimSpace(req.Status))
 	if normalizedStatus != constants.UserStatusActive && normalizedStatus != constants.UserStatusDisabled {
-		respondError(c, response.CodeBadRequest, "error.bad_request", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", nil)
 		return
 	}
 
 	if err := h.UserRepo.BatchUpdateStatus(req.UserIDs, normalizedStatus); err != nil {
-		respondError(c, response.CodeInternal, "error.user_update_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.user_update_failed", err)
 		return
 	}
 	for _, userID := range req.UserIDs {

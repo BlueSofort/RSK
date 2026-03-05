@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/http/response"
 	"github.com/dujiao-next/internal/repository"
 
@@ -14,7 +15,7 @@ import (
 func (h *Handler) ListAuthzAuditLogs(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	page, pageSize = normalizePagination(page, pageSize)
+	page, pageSize = shared.NormalizePagination(page, pageSize)
 
 	operatorAdminIDRaw := strings.TrimSpace(c.Query("operator_admin_id"))
 	targetAdminIDRaw := strings.TrimSpace(c.Query("target_admin_id"))
@@ -29,7 +30,7 @@ func (h *Handler) ListAuthzAuditLogs(c *gin.Context) {
 	if operatorAdminIDRaw != "" {
 		raw, err := strconv.ParseUint(operatorAdminIDRaw, 10, 64)
 		if err != nil {
-			respondError(c, response.CodeBadRequest, "error.bad_request", err)
+			shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 			return
 		}
 		operatorAdminID = uint(raw)
@@ -39,20 +40,20 @@ func (h *Handler) ListAuthzAuditLogs(c *gin.Context) {
 	if targetAdminIDRaw != "" {
 		raw, err := strconv.ParseUint(targetAdminIDRaw, 10, 64)
 		if err != nil {
-			respondError(c, response.CodeBadRequest, "error.bad_request", err)
+			shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 			return
 		}
 		targetAdminID = uint(raw)
 	}
 
-	createdFrom, err := parseTimeNullable(createdFromRaw)
+	createdFrom, err := shared.ParseTimeNullable(createdFromRaw)
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
-	createdTo, err := parseTimeNullable(createdToRaw)
+	createdTo, err := shared.ParseTimeNullable(createdToRaw)
 	if err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
@@ -69,7 +70,7 @@ func (h *Handler) ListAuthzAuditLogs(c *gin.Context) {
 		CreatedTo:       createdTo,
 	})
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.config_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.config_fetch_failed", err)
 		return
 	}
 

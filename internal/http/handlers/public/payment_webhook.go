@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/dujiao-next/internal/constants"
+	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/http/response"
 	"github.com/dujiao-next/internal/models"
 	"github.com/dujiao-next/internal/service"
@@ -14,17 +15,17 @@ import (
 
 // PaypalWebhook PayPal webhook 回调。
 func (h *Handler) PaypalWebhook(c *gin.Context) {
-	log := requestLog(c)
+	log := shared.RequestLog(c)
 	var query PaypalWebhookQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
 		log.Warnw("paypal_webhook_query_invalid", "error", err)
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		log.Warnw("paypal_webhook_body_read_failed", "channel_id", query.ChannelID, "error", err)
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 	log.Infow("paypal_webhook_received",
@@ -97,14 +98,14 @@ func (h *Handler) PaypalWebhook(c *gin.Context) {
 
 // StripeWebhook Stripe webhook 回调。
 func (h *Handler) StripeWebhook(c *gin.Context) {
-	log := requestLog(c)
+	log := shared.RequestLog(c)
 	var query StripeWebhookQuery
 	_ = c.ShouldBindQuery(&query)
 
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		log.Warnw("stripe_webhook_body_read_failed", "channel_id", query.ChannelID, "error", err)
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 	log.Infow("stripe_webhook_received",

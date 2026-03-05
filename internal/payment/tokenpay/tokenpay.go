@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/dujiao-next/internal/constants"
+	"github.com/dujiao-next/internal/payment/common"
 )
 
 const (
@@ -79,22 +80,10 @@ type QueryResult struct {
 }
 
 func ParseConfig(raw map[string]interface{}) (*Config, error) {
-	if raw == nil {
-		return nil, fmt.Errorf("%w: empty config", ErrConfigInvalid)
-	}
-	data, err := json.Marshal(raw)
-	if err != nil {
-		return nil, fmt.Errorf("%w: marshal config failed", ErrConfigInvalid)
-	}
-	var cfg Config
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("%w: unmarshal config failed", ErrConfigInvalid)
-	}
-	cfg.normalize()
-	return &cfg, nil
+	return common.ParseConfig[Config](raw, ErrConfigInvalid)
 }
 
-func (c *Config) normalize() {
+func (c *Config) Normalize() {
 	c.GatewayURL = strings.TrimRight(strings.TrimSpace(c.GatewayURL), "/")
 	c.NotifySecret = strings.TrimSpace(c.NotifySecret)
 	c.Currency = strings.ToUpper(strings.TrimSpace(c.Currency))

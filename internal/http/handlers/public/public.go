@@ -8,6 +8,7 @@ import (
 
 	"github.com/dujiao-next/internal/cache"
 	"github.com/dujiao-next/internal/constants"
+	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/http/response"
 	"github.com/dujiao-next/internal/i18n"
 	"github.com/dujiao-next/internal/models"
@@ -57,7 +58,7 @@ func (h *Handler) GetConfig(c *gin.Context) {
 
 	data, err := h.SettingService.GetConfig(defaults)
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.config_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.config_fetch_failed", err)
 		return
 	}
 
@@ -67,7 +68,7 @@ func (h *Handler) GetConfig(c *gin.Context) {
 		ActiveOnly: true,
 	})
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.config_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.config_fetch_failed", err)
 		return
 	}
 	publicChannels := make([]map[string]interface{}, 0, len(channels))
@@ -86,7 +87,7 @@ func (h *Handler) GetConfig(c *gin.Context) {
 	if h.CaptchaService != nil {
 		publicCaptcha, captchaErr := h.CaptchaService.GetPublicSetting()
 		if captchaErr != nil {
-			respondError(c, response.CodeInternal, "error.config_fetch_failed", captchaErr)
+			shared.RespondError(c, response.CodeInternal, "error.config_fetch_failed", captchaErr)
 			return
 		}
 		data["captcha"] = publicCaptcha
@@ -105,7 +106,7 @@ func (h *Handler) GetConfig(c *gin.Context) {
 
 	affiliateSetting, err := h.SettingService.GetAffiliateSetting()
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.config_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.config_fetch_failed", err)
 		return
 	}
 	data["affiliate"] = service.AffiliateSettingToMap(affiliateSetting)
@@ -119,7 +120,7 @@ func (h *Handler) GetProducts(c *gin.Context) {
 	// 获取分页参数
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	page, pageSize = normalizePagination(page, pageSize)
+	page, pageSize = shared.NormalizePagination(page, pageSize)
 
 	// 获取筛选参数
 	categoryID := c.Query("category_id")
@@ -127,7 +128,7 @@ func (h *Handler) GetProducts(c *gin.Context) {
 
 	products, total, err := h.ProductService.ListPublic(categoryID, search, page, pageSize)
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.product_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.product_fetch_failed", err)
 		return
 	}
 
@@ -137,7 +138,7 @@ func (h *Handler) GetProducts(c *gin.Context) {
 	}
 
 	if err := h.ProductService.ApplyAutoStockCounts(products); err != nil {
-		respondError(c, response.CodeInternal, "error.product_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.product_fetch_failed", err)
 		return
 	}
 
@@ -145,7 +146,7 @@ func (h *Handler) GetProducts(c *gin.Context) {
 	for i := range products {
 		item, derr := h.decoratePublicProduct(&products[i], promotionService)
 		if derr != nil {
-			respondError(c, response.CodeInternal, "error.product_fetch_failed", derr)
+			shared.RespondError(c, response.CodeInternal, "error.product_fetch_failed", derr)
 			return
 		}
 		decorated = append(decorated, item)
@@ -163,10 +164,10 @@ func (h *Handler) GetProductBySlug(c *gin.Context) {
 	product, err := h.ProductService.GetPublicBySlug(slug)
 	if err != nil {
 		if errors.Is(err, service.ErrNotFound) {
-			respondError(c, response.CodeNotFound, "error.product_not_found", nil)
+			shared.RespondError(c, response.CodeNotFound, "error.product_not_found", nil)
 			return
 		}
-		respondError(c, response.CodeInternal, "error.product_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.product_fetch_failed", err)
 		return
 	}
 
@@ -177,14 +178,14 @@ func (h *Handler) GetProductBySlug(c *gin.Context) {
 
 	temp := []models.Product{*product}
 	if err := h.ProductService.ApplyAutoStockCounts(temp); err != nil {
-		respondError(c, response.CodeInternal, "error.product_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.product_fetch_failed", err)
 		return
 	}
 	*product = temp[0]
 
 	decorated, derr := h.decoratePublicProduct(product, promotionService)
 	if derr != nil {
-		respondError(c, response.CodeInternal, "error.product_fetch_failed", derr)
+		shared.RespondError(c, response.CodeInternal, "error.product_fetch_failed", derr)
 		return
 	}
 
@@ -347,14 +348,14 @@ func (h *Handler) GetPosts(c *gin.Context) {
 	// 获取分页参数
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	page, pageSize = normalizePagination(page, pageSize)
+	page, pageSize = shared.NormalizePagination(page, pageSize)
 
 	// 获取类型参数
 	postType := c.Query("type") // blog 或 notice
 
 	posts, total, err := h.PostService.ListPublic(postType, page, pageSize)
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.post_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.post_fetch_failed", err)
 		return
 	}
 
@@ -370,10 +371,10 @@ func (h *Handler) GetPostBySlug(c *gin.Context) {
 	post, err := h.PostService.GetPublicBySlug(slug)
 	if err != nil {
 		if errors.Is(err, service.ErrNotFound) {
-			respondError(c, response.CodeNotFound, "error.post_not_found", nil)
+			shared.RespondError(c, response.CodeNotFound, "error.post_not_found", nil)
 			return
 		}
-		respondError(c, response.CodeInternal, "error.post_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.post_fetch_failed", err)
 		return
 	}
 
@@ -384,7 +385,7 @@ func (h *Handler) GetPostBySlug(c *gin.Context) {
 func (h *Handler) GetCategories(c *gin.Context) {
 	categories, err := h.CategoryService.List()
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.category_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.category_fetch_failed", err)
 		return
 	}
 
@@ -393,37 +394,37 @@ func (h *Handler) GetCategories(c *gin.Context) {
 
 // CreateGuestOrderRequest 游客下单请求
 type CreateGuestOrderRequest struct {
-	Email               string                 `json:"email" binding:"required"`
-	OrderPassword       string                 `json:"order_password" binding:"required"`
-	Items               []OrderItemRequest     `json:"items" binding:"required"`
-	CouponCode          string                 `json:"coupon_code"`
-	AffiliateCode       string                 `json:"affiliate_code"`
-	AffiliateVisitorKey string                 `json:"affiliate_visitor_key"`
-	ManualFormData      map[string]models.JSON `json:"manual_form_data"`
-	CaptchaPayload      CaptchaPayloadRequest  `json:"captcha_payload"`
+	Email               string                       `json:"email" binding:"required"`
+	OrderPassword       string                       `json:"order_password" binding:"required"`
+	Items               []OrderItemRequest           `json:"items" binding:"required"`
+	CouponCode          string                       `json:"coupon_code"`
+	AffiliateCode       string                       `json:"affiliate_code"`
+	AffiliateVisitorKey string                       `json:"affiliate_visitor_key"`
+	ManualFormData      map[string]models.JSON       `json:"manual_form_data"`
+	CaptchaPayload      shared.CaptchaPayloadRequest `json:"captcha_payload"`
 }
 
 // CreateGuestOrder 游客创建订单
 func (h *Handler) CreateGuestOrder(c *gin.Context) {
 	var req CreateGuestOrderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 	if h.CaptchaService != nil {
 		if captchaErr := h.CaptchaService.Verify(constants.CaptchaSceneGuestCreateOrder, req.CaptchaPayload.ToServicePayload(), c.ClientIP()); captchaErr != nil {
 			switch {
 			case errors.Is(captchaErr, service.ErrCaptchaRequired):
-				respondError(c, response.CodeBadRequest, "error.captcha_required", nil)
+				shared.RespondError(c, response.CodeBadRequest, "error.captcha_required", nil)
 				return
 			case errors.Is(captchaErr, service.ErrCaptchaInvalid):
-				respondError(c, response.CodeBadRequest, "error.captcha_invalid", nil)
+				shared.RespondError(c, response.CodeBadRequest, "error.captcha_invalid", nil)
 				return
 			case errors.Is(captchaErr, service.ErrCaptchaConfigInvalid):
-				respondError(c, response.CodeInternal, "error.captcha_config_invalid", captchaErr)
+				shared.RespondError(c, response.CodeInternal, "error.captcha_config_invalid", captchaErr)
 				return
 			default:
-				respondError(c, response.CodeInternal, "error.captcha_verify_failed", captchaErr)
+				shared.RespondError(c, response.CodeInternal, "error.captcha_verify_failed", captchaErr)
 				return
 			}
 		}
@@ -459,7 +460,7 @@ func (h *Handler) CreateGuestOrder(c *gin.Context) {
 func (h *Handler) PreviewGuestOrder(c *gin.Context) {
 	var req CreateGuestOrderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 	var items []service.CreateOrderItem
@@ -495,11 +496,11 @@ func (h *Handler) ListGuestOrders(c *gin.Context) {
 	password := strings.TrimSpace(c.Query("order_password"))
 	orderNo := strings.TrimSpace(c.Query("order_no"))
 	if email == "" {
-		respondError(c, response.CodeBadRequest, "error.guest_email_required", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.guest_email_required", nil)
 		return
 	}
 	if password == "" {
-		respondError(c, response.CodeBadRequest, "error.guest_password_required", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.guest_password_required", nil)
 		return
 	}
 
@@ -516,7 +517,7 @@ func (h *Handler) ListGuestOrders(c *gin.Context) {
 				response.SuccessWithPage(c, []models.Order{}, pagination)
 				return
 			}
-			respondError(c, response.CodeInternal, "error.order_fetch_failed", err)
+			shared.RespondError(c, response.CodeInternal, "error.order_fetch_failed", err)
 			return
 		}
 		pagination := response.Pagination{
@@ -531,11 +532,11 @@ func (h *Handler) ListGuestOrders(c *gin.Context) {
 
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	page, pageSize = normalizePagination(page, pageSize)
+	page, pageSize = shared.NormalizePagination(page, pageSize)
 
 	orders, total, err := h.OrderService.ListOrdersByGuest(email, password, page, pageSize)
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.order_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.order_fetch_failed", err)
 		return
 	}
 	pagination := response.BuildPagination(page, pageSize, total)
@@ -547,25 +548,25 @@ func (h *Handler) GetGuestOrder(c *gin.Context) {
 	email := strings.TrimSpace(c.Query("email"))
 	password := strings.TrimSpace(c.Query("order_password"))
 	if email == "" {
-		respondError(c, response.CodeBadRequest, "error.guest_email_required", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.guest_email_required", nil)
 		return
 	}
 	if password == "" {
-		respondError(c, response.CodeBadRequest, "error.guest_password_required", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.guest_password_required", nil)
 		return
 	}
 	orderID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil || orderID == 0 {
-		respondError(c, response.CodeBadRequest, "error.order_item_invalid", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.order_item_invalid", nil)
 		return
 	}
 	order, err := h.OrderService.GetOrderByGuest(uint(orderID), email, password)
 	if err != nil {
 		if errors.Is(err, service.ErrGuestOrderNotFound) {
-			respondError(c, response.CodeNotFound, "error.guest_order_not_found", nil)
+			shared.RespondError(c, response.CodeNotFound, "error.guest_order_not_found", nil)
 			return
 		}
-		respondError(c, response.CodeInternal, "error.order_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.order_fetch_failed", err)
 		return
 	}
 	response.Success(c, order)
@@ -576,25 +577,25 @@ func (h *Handler) GetGuestOrderByOrderNo(c *gin.Context) {
 	email := strings.TrimSpace(c.Query("email"))
 	password := strings.TrimSpace(c.Query("order_password"))
 	if email == "" {
-		respondError(c, response.CodeBadRequest, "error.guest_email_required", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.guest_email_required", nil)
 		return
 	}
 	if password == "" {
-		respondError(c, response.CodeBadRequest, "error.guest_password_required", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.guest_password_required", nil)
 		return
 	}
 	orderNo := strings.TrimSpace(c.Param("order_no"))
 	if orderNo == "" {
-		respondError(c, response.CodeBadRequest, "error.order_item_invalid", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.order_item_invalid", nil)
 		return
 	}
 	order, err := h.OrderService.GetOrderByGuestOrderNo(orderNo, email, password)
 	if err != nil {
 		if errors.Is(err, service.ErrGuestOrderNotFound) {
-			respondError(c, response.CodeNotFound, "error.guest_order_not_found", nil)
+			shared.RespondError(c, response.CodeNotFound, "error.guest_order_not_found", nil)
 			return
 		}
-		respondError(c, response.CodeInternal, "error.order_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.order_fetch_failed", err)
 		return
 	}
 	response.Success(c, order)
@@ -618,25 +619,25 @@ type LatestGuestPaymentQuery struct {
 func (h *Handler) CreateGuestPayment(c *gin.Context) {
 	var req CreateGuestPaymentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 	email := strings.TrimSpace(req.Email)
 	password := strings.TrimSpace(req.OrderPassword)
 	if email == "" {
-		respondError(c, response.CodeBadRequest, "error.guest_email_required", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.guest_email_required", nil)
 		return
 	}
 	if password == "" {
-		respondError(c, response.CodeBadRequest, "error.guest_password_required", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.guest_password_required", nil)
 		return
 	}
 	if _, err := h.OrderService.GetOrderByGuest(req.OrderID, email, password); err != nil {
 		if errors.Is(err, service.ErrGuestOrderNotFound) {
-			respondError(c, response.CodeNotFound, "error.guest_order_not_found", nil)
+			shared.RespondError(c, response.CodeNotFound, "error.guest_order_not_found", nil)
 			return
 		}
-		respondError(c, response.CodeInternal, "error.order_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.order_fetch_failed", err)
 		return
 	}
 	result, err := h.PaymentService.CreatePayment(service.CreatePaymentInput{
@@ -677,40 +678,40 @@ type CaptureGuestPaymentRequest struct {
 func (h *Handler) CaptureGuestPayment(c *gin.Context) {
 	paymentID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil || paymentID == 0 {
-		respondError(c, response.CodeBadRequest, "error.payment_invalid", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.payment_invalid", nil)
 		return
 	}
 	var req CaptureGuestPaymentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 	email := strings.TrimSpace(req.Email)
 	password := strings.TrimSpace(req.OrderPassword)
 	if email == "" {
-		respondError(c, response.CodeBadRequest, "error.guest_email_required", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.guest_email_required", nil)
 		return
 	}
 	if password == "" {
-		respondError(c, response.CodeBadRequest, "error.guest_password_required", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.guest_password_required", nil)
 		return
 	}
 
 	payment, err := h.PaymentService.GetPayment(uint(paymentID))
 	if err != nil {
 		if errors.Is(err, service.ErrPaymentNotFound) {
-			respondError(c, response.CodeNotFound, "error.payment_not_found", nil)
+			shared.RespondError(c, response.CodeNotFound, "error.payment_not_found", nil)
 			return
 		}
-		respondError(c, response.CodeInternal, "error.payment_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.payment_fetch_failed", err)
 		return
 	}
 	if _, err := h.OrderService.GetOrderByGuest(payment.OrderID, email, password); err != nil {
 		if errors.Is(err, service.ErrGuestOrderNotFound) {
-			respondError(c, response.CodeNotFound, "error.guest_order_not_found", nil)
+			shared.RespondError(c, response.CodeNotFound, "error.guest_order_not_found", nil)
 			return
 		}
-		respondError(c, response.CodeInternal, "error.order_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.order_fetch_failed", err)
 		return
 	}
 
@@ -732,49 +733,49 @@ func (h *Handler) CaptureGuestPayment(c *gin.Context) {
 func (h *Handler) GetGuestLatestPayment(c *gin.Context) {
 	var query LatestGuestPaymentQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
-		respondError(c, response.CodeBadRequest, "error.bad_request", err)
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 	email := strings.TrimSpace(query.Email)
 	password := strings.TrimSpace(query.OrderPassword)
 	if email == "" {
-		respondError(c, response.CodeBadRequest, "error.guest_email_required", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.guest_email_required", nil)
 		return
 	}
 	if password == "" {
-		respondError(c, response.CodeBadRequest, "error.guest_password_required", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.guest_password_required", nil)
 		return
 	}
 
 	order, err := h.OrderService.GetOrderByGuest(query.OrderID, email, password)
 	if err != nil {
 		if errors.Is(err, service.ErrGuestOrderNotFound) {
-			respondError(c, response.CodeNotFound, "error.guest_order_not_found", nil)
+			shared.RespondError(c, response.CodeNotFound, "error.guest_order_not_found", nil)
 			return
 		}
-		respondError(c, response.CodeInternal, "error.order_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.order_fetch_failed", err)
 		return
 	}
 	if order.ParentID != nil {
-		respondError(c, response.CodeBadRequest, "error.payment_invalid", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.payment_invalid", nil)
 		return
 	}
 	if order.Status != constants.OrderStatusPendingPayment {
-		respondError(c, response.CodeBadRequest, "error.order_status_invalid", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.order_status_invalid", nil)
 		return
 	}
 	if order.ExpiresAt != nil && !order.ExpiresAt.After(time.Now()) {
-		respondError(c, response.CodeBadRequest, "error.order_status_invalid", nil)
+		shared.RespondError(c, response.CodeBadRequest, "error.order_status_invalid", nil)
 		return
 	}
 
 	payment, err := h.PaymentRepo.GetLatestPendingByOrder(order.ID, time.Now())
 	if err != nil {
-		respondError(c, response.CodeInternal, "error.payment_fetch_failed", err)
+		shared.RespondError(c, response.CodeInternal, "error.payment_fetch_failed", err)
 		return
 	}
 	if payment == nil {
-		respondError(c, response.CodeNotFound, "error.payment_not_found", nil)
+		shared.RespondError(c, response.CodeNotFound, "error.payment_not_found", nil)
 		return
 	}
 

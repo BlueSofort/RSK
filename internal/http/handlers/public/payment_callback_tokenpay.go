@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/dujiao-next/internal/constants"
+	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/models"
 	"github.com/dujiao-next/internal/payment/tokenpay"
 	"github.com/dujiao-next/internal/service"
@@ -15,7 +16,7 @@ import (
 )
 
 func (h *Handler) HandleTokenPayCallback(c *gin.Context) bool {
-	log := requestLog(c)
+	log := shared.RequestLog(c)
 
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {

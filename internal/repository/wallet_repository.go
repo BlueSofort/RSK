@@ -35,12 +35,12 @@ type WalletRepository interface {
 
 // GormWalletRepository GORM 钱包仓储实现
 type GormWalletRepository struct {
-	db *gorm.DB
+	BaseRepository
 }
 
 // NewWalletRepository 创建钱包仓储
 func NewWalletRepository(db *gorm.DB) *GormWalletRepository {
-	return &GormWalletRepository{db: db}
+	return &GormWalletRepository{BaseRepository: BaseRepository{db: db}}
 }
 
 // WithTx 绑定事务
@@ -48,15 +48,7 @@ func (r *GormWalletRepository) WithTx(tx *gorm.DB) *GormWalletRepository {
 	if tx == nil {
 		return r
 	}
-	return &GormWalletRepository{db: tx}
-}
-
-// Transaction 执行事务
-func (r *GormWalletRepository) Transaction(fn func(tx *gorm.DB) error) error {
-	if fn == nil {
-		return nil
-	}
-	return r.db.Transaction(fn)
+	return &GormWalletRepository{BaseRepository: BaseRepository{db: tx}}
 }
 
 // GetAccountByUserID 按用户ID获取钱包账户

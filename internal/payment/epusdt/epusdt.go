@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/dujiao-next/internal/constants"
+	"github.com/dujiao-next/internal/payment/common"
 )
 
 var (
@@ -123,19 +124,7 @@ func (c *CallbackData) GetActualAmount() float64 {
 
 // ParseConfig 解析配置
 func ParseConfig(raw map[string]interface{}) (*Config, error) {
-	if raw == nil {
-		return nil, fmt.Errorf("%w: empty config", ErrConfigInvalid)
-	}
-	data, err := json.Marshal(raw)
-	if err != nil {
-		return nil, fmt.Errorf("%w: marshal config failed", ErrConfigInvalid)
-	}
-	var cfg Config
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("%w: unmarshal config failed", ErrConfigInvalid)
-	}
-	cfg.normalize()
-	return &cfg, nil
+	return common.ParseConfig[Config](raw, ErrConfigInvalid)
 }
 
 // ValidateConfig 校验配置
@@ -158,7 +147,7 @@ func ValidateConfig(cfg *Config) error {
 	return nil
 }
 
-func (c *Config) normalize() {
+func (c *Config) Normalize() {
 	c.GatewayURL = strings.TrimRight(strings.TrimSpace(c.GatewayURL), "/")
 	c.AuthToken = strings.TrimSpace(c.AuthToken)
 	c.TradeType = strings.TrimSpace(c.TradeType)

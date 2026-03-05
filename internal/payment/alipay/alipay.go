@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/dujiao-next/internal/constants"
+	"github.com/dujiao-next/internal/payment/common"
 
 	"github.com/shopspring/decimal"
 )
@@ -34,8 +35,6 @@ var (
 )
 
 const (
-	defaultTimeout = 12 * time.Second
-
 	alipaySignTypeRSA2 = "RSA2"
 	alipaySignTypeRSA  = "RSA"
 
@@ -94,19 +93,7 @@ type CreateResult struct {
 
 // ParseConfig 解析配置。
 func ParseConfig(raw map[string]interface{}) (*Config, error) {
-	if raw == nil {
-		return nil, fmt.Errorf("%w: empty config", ErrConfigInvalid)
-	}
-	data, err := json.Marshal(raw)
-	if err != nil {
-		return nil, fmt.Errorf("%w: marshal config failed", ErrConfigInvalid)
-	}
-	var cfg Config
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("%w: unmarshal config failed", ErrConfigInvalid)
-	}
-	cfg.normalize()
-	return &cfg, nil
+	return common.ParseConfig[Config](raw, ErrConfigInvalid)
 }
 
 // ValidateConfig 校验配置完整性。
@@ -479,7 +466,7 @@ func postGateway(ctx context.Context, gatewayURL string, params map[string]strin
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	ctx, cancel := withDefaultTimeout(ctx)
+	ctx, cancel := common.WithDefaultTimeout(ctx)
 	defer cancel()
 
 	form := url.Values{}
@@ -623,14 +610,7 @@ func requiresReturnURL(mode string) bool {
 	return mode == constants.PaymentInteractionWAP || mode == constants.PaymentInteractionPage
 }
 
-func withDefaultTimeout(ctx context.Context) (context.Context, context.CancelFunc) {
-	if _, ok := ctx.Deadline(); ok {
-		return ctx, func() {}
-	}
-	return context.WithTimeout(ctx, defaultTimeout)
-}
-
-func (c *Config) normalize() {
+func (c *Config) Normalize() {
 	c.AppID = strings.TrimSpace(c.AppID)
 	c.PrivateKey = strings.TrimSpace(c.PrivateKey)
 	c.AlipayPublicKey = strings.TrimSpace(c.AlipayPublicKey)

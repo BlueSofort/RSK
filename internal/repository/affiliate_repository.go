@@ -53,12 +53,12 @@ type AffiliateRepository interface {
 
 // GormAffiliateRepository GORM 推广返利仓储
 type GormAffiliateRepository struct {
-	db *gorm.DB
+	BaseRepository
 }
 
 // NewAffiliateRepository 创建推广返利仓储
 func NewAffiliateRepository(db *gorm.DB) *GormAffiliateRepository {
-	return &GormAffiliateRepository{db: db}
+	return &GormAffiliateRepository{BaseRepository: BaseRepository{db: db}}
 }
 
 // WithTx 绑定事务
@@ -66,15 +66,7 @@ func (r *GormAffiliateRepository) WithTx(tx *gorm.DB) AffiliateRepository {
 	if tx == nil {
 		return r
 	}
-	return &GormAffiliateRepository{db: tx}
-}
-
-// Transaction 执行事务
-func (r *GormAffiliateRepository) Transaction(fn func(tx *gorm.DB) error) error {
-	if fn == nil {
-		return nil
-	}
-	return r.db.Transaction(fn)
+	return &GormAffiliateRepository{BaseRepository: BaseRepository{db: tx}}
 }
 
 // GetProfileByID 按ID获取推广档案
