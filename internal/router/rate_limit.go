@@ -114,6 +114,15 @@ func KeyByIP(c *gin.Context) string {
 	return c.ClientIP()
 }
 
+// KeyByUpstreamApiKey 使用上游 API Key 作为限流 key
+func KeyByUpstreamApiKey(c *gin.Context) string {
+	apiKey := c.GetHeader("Dujiao-Next-Api-Key")
+	if apiKey != "" {
+		return apiKey
+	}
+	return c.ClientIP()
+}
+
 // KeyByIPAndJSONField 使用 IP + JSON 字段作为限流 key
 func KeyByIPAndJSONField(field string) RateLimitKeyFunc {
 	return func(c *gin.Context) string {

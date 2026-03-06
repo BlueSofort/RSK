@@ -20,7 +20,7 @@ const (
 	HeaderSignature = "Dujiao-Next-Signature"
 
 	// MaxTimestampSkew 最大时间戳偏差（秒）
-	MaxTimestampSkew = 300
+	MaxTimestampSkew = 60
 )
 
 // Sign 生成 HMAC-SHA256 签名

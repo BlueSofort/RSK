@@ -37,6 +37,15 @@ func (h *Handler) GetProcurementOrders(c *gin.Context) {
 	if orderNo := strings.TrimSpace(c.Query("order_no")); orderNo != "" {
 		filter.LocalOrderNo = orderNo
 	}
+	if upstreamOrderNo := strings.TrimSpace(c.Query("upstream_order_no")); upstreamOrderNo != "" {
+		filter.UpstreamOrderNo = upstreamOrderNo
+	}
+	if createdFrom := strings.TrimSpace(c.Query("created_from")); createdFrom != "" {
+		filter.CreatedFrom = createdFrom
+	}
+	if createdTo := strings.TrimSpace(c.Query("created_to")); createdTo != "" {
+		filter.CreatedTo = createdTo
+	}
 
 	orders, total, err := h.ProcurementOrderService.List(filter)
 	if err != nil {

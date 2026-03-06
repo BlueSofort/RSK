@@ -91,6 +91,9 @@ func (s *ReconciliationService) Execute(ctx context.Context, jobID uint) error {
 	if job.Status == constants.ReconciliationJobStatusRunning {
 		return ErrReconciliationJobRunning
 	}
+	if job.Status == constants.ReconciliationJobStatusCompleted {
+		return nil // 已完成，不重复执行
+	}
 
 	now := time.Now()
 	job.Status = constants.ReconciliationJobStatusRunning
@@ -141,11 +144,13 @@ func (s *ReconciliationService) executeReconciliation(ctx context.Context, job *
 		return fmt.Errorf("list procurement orders: %w", err)
 	}
 
-	job.TotalCount = len(procOrders)
 	var mismatchItems []models.ReconciliationItem
+	var skippedCount int
+	var errorCount int
 
 	for _, po := range procOrders {
 		if po.UpstreamOrderID == 0 {
+			skippedCount++
 			continue
 		}
 
@@ -155,6 +160,7 @@ func (s *ReconciliationService) executeReconciliation(ctx context.Context, job *
 			logger.Warnw("reconciliation_get_upstream_order_failed",
 				"job_id", job.ID, "procurement_id", po.ID,
 				"upstream_order_id", po.UpstreamOrderID, "error", err)
+			errorCount++
 			continue
 		}
 
@@ -171,13 +177,18 @@ func (s *ReconciliationService) executeReconciliation(ctx context.Context, job *
 		}
 	}
 
+	// TotalCount 只统计实际参与对比的采购单（排除无上游订单和查询失败的）
+	comparedCount := len(procOrders) - skippedCount - errorCount
+	job.TotalCount = comparedCount
 	job.MismatchedCount = len(mismatchItems)
-	job.MatchedCount = job.TotalCount - job.MismatchedCount
+	job.MatchedCount = comparedCount - job.MismatchedCount
 
-	resultJSON, _ := json.Marshal(map[string]interface{}{
+	resultJSON, _ := json.Marshal(map[string]any{
 		"total":      job.TotalCount,
 		"matched":    job.MatchedCount,
 		"mismatched": job.MismatchedCount,
+		"skipped":    skippedCount,
+		"errors":     errorCount,
 	})
 	job.ResultJSON = string(resultJSON)
 
@@ -194,10 +205,8 @@ func (s *ReconciliationService) compareOrder(job *models.ReconciliationJob, po *
 	}
 
 	amountMismatch := false
-	if checkAmount {
-		// 金额对比：本地采购金额 vs 上游订单金额（通过 fulfillment 中的 amount 字段如可用）
-		// 此处简单比较 upstream_amount 是否一致
-		// 注：上游 detail 通常不返回 amount，但如果返回了可以比较
+	if checkAmount && po.LocalSellAmount.IsPositive() && po.UpstreamAmount.IsPositive() {
+		amountMismatch = !po.LocalSellAmount.Equal(po.UpstreamAmount.Decimal)
 	}
 
 	var mismatchType string
@@ -220,7 +229,8 @@ func (s *ReconciliationService) compareOrder(job *models.ReconciliationJob, po *
 		UpstreamOrderNo:    po.UpstreamOrderNo,
 		LocalStatus:        po.Status,
 		UpstreamStatus:     detail.Status,
-		LocalAmount:        po.UpstreamAmount,
+		LocalAmount:        po.LocalSellAmount,
+		UpstreamAmount:     po.UpstreamAmount,
 		MismatchType:       mismatchType,
 	}
 }
@@ -242,6 +252,8 @@ func isStatusConsistent(localStatus, upstreamStatus string) bool {
 		return upstreamStatus == "paid" || upstreamStatus == "processing" || upstreamStatus == "accepted"
 	case constants.ProcurementStatusFailed, constants.ProcurementStatusRejected:
 		return upstreamStatus == "failed" || upstreamStatus == "rejected"
+	case "fulfilling":
+		return upstreamStatus == "fulfilling" || upstreamStatus == "processing" || upstreamStatus == "paid"
 	default:
 		return localStatus == upstreamStatus
 	}
@@ -255,7 +267,7 @@ func (s *ReconciliationService) sendMismatchNotification(job *models.Reconciliat
 		EventType: constants.NotificationEventExceptionAlert,
 		BizType:   constants.NotificationBizTypeReconciliation,
 		BizID:     job.ID,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"message":          fmt.Sprintf("对账任务 #%d 完成，发现 %d 项差异", job.ID, job.MismatchedCount),
 			"job_id":           job.ID,
 			"connection_id":    job.ConnectionID,

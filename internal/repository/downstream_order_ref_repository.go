@@ -13,6 +13,7 @@ import (
 type DownstreamOrderRefRepository interface {
 	GetByID(id uint) (*models.DownstreamOrderRef, error)
 	GetByOrderID(orderID uint) (*models.DownstreamOrderRef, error)
+	GetByCredentialAndDownstreamNo(credentialID uint, downstreamOrderNo string) (*models.DownstreamOrderRef, error)
 	Create(ref *models.DownstreamOrderRef) error
 	Update(ref *models.DownstreamOrderRef) error
 	ListPendingCallbacks(limit int) ([]models.DownstreamOrderRef, error)
@@ -51,6 +52,21 @@ func (r *GormDownstreamOrderRefRepository) GetByID(id uint) (*models.DownstreamO
 func (r *GormDownstreamOrderRefRepository) GetByOrderID(orderID uint) (*models.DownstreamOrderRef, error) {
 	var ref models.DownstreamOrderRef
 	if err := r.db.Where("order_id = ?", orderID).First(&ref).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &ref, nil
+}
+
+// GetByCredentialAndDownstreamNo 根据凭证 ID 和下游订单号查询（用于幂等性检查）
+func (r *GormDownstreamOrderRefRepository) GetByCredentialAndDownstreamNo(credentialID uint, downstreamOrderNo string) (*models.DownstreamOrderRef, error) {
+	if credentialID == 0 || downstreamOrderNo == "" {
+		return nil, nil
+	}
+	var ref models.DownstreamOrderRef
+	if err := r.db.Where("api_credential_id = ? AND downstream_order_no = ?", credentialID, downstreamOrderNo).First(&ref).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}

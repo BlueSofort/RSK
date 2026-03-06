@@ -61,10 +61,10 @@ func (r *GormApiCredentialRepository) GetByUserID(userID uint) (*models.ApiCrede
 	return &cred, nil
 }
 
-// GetByApiKey 根据 API Key 获取
+// GetByApiKey 根据 API Key 获取（预加载 User 用于状态校验）
 func (r *GormApiCredentialRepository) GetByApiKey(apiKey string) (*models.ApiCredential, error) {
 	var cred models.ApiCredential
-	if err := r.db.Where("api_key = ?", apiKey).First(&cred).Error; err != nil {
+	if err := r.db.Preload("User").Where("api_key = ?", apiKey).First(&cred).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
