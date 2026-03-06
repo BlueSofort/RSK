@@ -49,6 +49,10 @@ func UpstreamAPIAuthMiddleware(credRepo repository.ApiCredentialRepository) gin.
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"ok": false, "error_code": "invalid_api_key", "error_message": "api key is invalid or disabled"})
 			return
 		}
+		if cred.User == nil || cred.User.Status != constants.UserStatusActive {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"ok": false, "error_code": "user_disabled", "error_message": "user account is disabled"})
+			return
+		}
 
 		// 读取 body 用于签名验证
 		var body []byte

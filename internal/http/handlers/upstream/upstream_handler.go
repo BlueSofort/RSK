@@ -4,8 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/dujiao-next/internal/constants"
@@ -252,6 +255,35 @@ func (h *Handler) CreateOrder(c *gin.Context) {
 		return
 	}
 
+	// 验证 callback URL（防止 SSRF）
+	if req.CallbackURL != "" {
+		if err := validateCallbackURL(req.CallbackURL); err != nil {
+			errorResponse(c, http.StatusBadRequest, "invalid_callback_url", err.Error())
+			return
+		}
+	}
+
+	// 幂等性检查：同一 credential 的相同 downstream_order_no 不允许重复创建
+	if strings.TrimSpace(req.DownstreamOrderNo) != "" {
+		existingRef, _ := h.downstreamRefRepo.GetByCredentialAndDownstreamNo(credentialID, req.DownstreamOrderNo)
+		if existingRef != nil {
+			// 已有相同下游订单号的记录，返回已有订单信息
+			existingOrder, orderErr := h.OrderService.GetOrderByUser(existingRef.OrderID, userID)
+			if orderErr == nil && existingOrder != nil {
+				currency, _ := h.SettingService.GetSiteCurrency("CNY")
+				successResponse(c, gin.H{
+					"ok":       true,
+					"order_id": existingOrder.ID,
+					"order_no": existingOrder.OrderNo,
+					"status":   existingOrder.Status,
+					"amount":   existingOrder.TotalAmount.StringFixed(2),
+					"currency": currency,
+				})
+				return
+			}
+		}
+	}
+
 	// 查找 SKU 获取所属商品 ID
 	sku, err := h.ProductSKURepo.GetByID(req.SKUID)
 	if err != nil || sku == nil {
@@ -336,12 +368,16 @@ func (h *Handler) CreateOrder(c *gin.Context) {
 			"order_id", order.ID,
 			"error", payErr,
 		)
+		// 支付失败，自动取消订单避免遗留未支付订单
+		if _, cancelErr := h.OrderService.CancelOrder(order.ID, userID); cancelErr != nil {
+			logger.Warnw("upstream_cancel_unpaid_order_failed", "order_id", order.ID, "error", cancelErr)
+		}
 		// 钱包余额不足或支付失败，返回 200 + ok:false 让 A 站正确解析错误码
 		c.JSON(http.StatusOK, gin.H{
 			"ok":            false,
 			"order_id":      order.ID,
 			"order_no":      order.OrderNo,
-			"status":        order.Status,
+			"status":        constants.OrderStatusCanceled,
 			"error_code":    "payment_failed",
 			"error_message": fmt.Sprintf("wallet payment failed: %s", payErr.Error()),
 		})
@@ -746,6 +782,34 @@ func computeSKUStock(p models.Product, s models.ProductSKU) (status string, quan
 }
 
 // mapOrderErrorToResponse 将订单创建错误映射为上游 API 错误响应
+// validateCallbackURL 验证回调 URL 的安全性（防止 SSRF）
+func validateCallbackURL(rawURL string) error {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return fmt.Errorf("invalid url format")
+	}
+	scheme := strings.ToLower(parsed.Scheme)
+	if scheme != "http" && scheme != "https" {
+		return fmt.Errorf("callback url must use http or https")
+	}
+	host := parsed.Hostname()
+	if host == "" {
+		return fmt.Errorf("callback url must have a host")
+	}
+	// 禁止 localhost 和回环地址
+	if host == "localhost" || host == "127.0.0.1" || host == "::1" || host == "0.0.0.0" {
+		return fmt.Errorf("callback url must not point to localhost")
+	}
+	// 检查是否是内网 IP
+	ip := net.ParseIP(host)
+	if ip != nil {
+		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+			return fmt.Errorf("callback url must not point to private network")
+		}
+	}
+	return nil
+}
+
 func mapOrderErrorToResponse(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, service.ErrWalletInsufficientBalance):

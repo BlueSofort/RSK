@@ -28,9 +28,12 @@ type ProcurementOrderRepository interface {
 
 // ProcurementOrderListFilter 采购单列表筛选
 type ProcurementOrderListFilter struct {
-	ConnectionID uint
-	Status       string
-	LocalOrderNo string
+	ConnectionID    uint
+	Status          string
+	LocalOrderNo    string
+	UpstreamOrderNo string
+	CreatedFrom     string
+	CreatedTo       string
 	Pagination
 }
 
@@ -138,6 +141,15 @@ func (r *GormProcurementOrderRepository) List(filter ProcurementOrderListFilter)
 	}
 	if filter.LocalOrderNo != "" {
 		q = q.Where("local_order_no = ?", filter.LocalOrderNo)
+	}
+	if filter.UpstreamOrderNo != "" {
+		q = q.Where("upstream_order_no = ?", filter.UpstreamOrderNo)
+	}
+	if filter.CreatedFrom != "" {
+		q = q.Where("created_at >= ?", filter.CreatedFrom)
+	}
+	if filter.CreatedTo != "" {
+		q = q.Where("created_at <= ?", filter.CreatedTo)
 	}
 
 	if err := q.Count(&total).Error; err != nil {

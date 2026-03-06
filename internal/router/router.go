@@ -51,6 +51,13 @@ func SetupRouter(cfg *config.Config, c *provider.Container) *gin.Engine {
 		BlockSeconds:  cfg.Security.LoginRateLimit.BlockSeconds,
 		MessageKey:    "error.login_too_many",
 	}
+	upstreamAPIRule := RateLimitRule{
+		Prefix:        fmt.Sprintf("%s:rate:upstream_api", redisPrefix),
+		WindowSeconds: 60,
+		MaxRequests:   60,
+		BlockSeconds:  30,
+		MessageKey:    "error.rate_limited",
+	}
 
 	// 中间件
 	r.Use(gin.Recovery())
@@ -147,6 +154,7 @@ func SetupRouter(cfg *config.Config, c *provider.Container) *gin.Engine {
 
 		// 上游 API（本站作为 B 站点，暴露给下游 A 调用）
 		upstreamAPI := apiV1.Group("/upstream")
+		upstreamAPI.Use(RateLimitMiddleware(redisClient, upstreamAPIRule, KeyByUpstreamApiKey))
 		upstreamAPI.Use(UpstreamAPIAuthMiddleware(c.ApiCredentialRepo))
 		{
 			upstreamAPI.POST("/ping", upstreamHandler.Ping)
