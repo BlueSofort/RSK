@@ -82,6 +82,34 @@
           <!-- Approved / Active -->
           <template v-else>
             <div class="space-y-4">
+              <!-- First-time notice: secret never viewed -->
+              <div
+                v-if="!hasViewedSecret && !newSecret"
+                class="rounded-2xl border border-sky-200/70 bg-sky-50/60 p-4 shadow-sm dark:border-sky-500/20 dark:bg-sky-500/10"
+              >
+                <div class="flex items-start gap-3">
+                  <div class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sky-500 text-white">
+                    <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                      <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                    </svg>
+                  </div>
+                  <div class="flex-1">
+                    <h3 class="text-sm font-semibold text-sky-700 dark:text-sky-300">{{ t('personalCenter.apiPanel.approvedNoticeTitle') }}</h3>
+                    <p class="mt-1 text-xs text-sky-700/80 dark:text-sky-200">
+                      {{ t('personalCenter.apiPanel.approvedNoticeDesc') }}
+                    </p>
+                    <button
+                      type="button"
+                      :disabled="submitting"
+                      class="mt-3 inline-flex items-center rounded-xl bg-sky-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      @click="handleFirstGenerate"
+                    >
+                      {{ submitting ? t('personalCenter.apiPanel.regenerating') : t('personalCenter.apiPanel.generateSecret') }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               <!-- API Key -->
               <div class="rounded-xl border theme-surface-soft p-4">
                 <div class="text-xs theme-text-muted">API Key</div>
@@ -245,6 +273,7 @@ const credential = ref<CredentialData | null>(null)
 const panelAlert = ref<PageAlert | null>(null)
 const newSecret = ref('')
 const showConfirm = ref(false)
+const hasViewedSecret = ref(false)
 
 const maskedSecret = computed(() => {
   if (credential.value?.api_secret_masked) {
@@ -252,6 +281,8 @@ const maskedSecret = computed(() => {
   }
   return '••••••••••••'
 })
+
+const secretViewedKey = 'api_secret_viewed'
 
 const loadCredential = async () => {
   loading.value = true
@@ -268,6 +299,8 @@ const loadCredential = async () => {
         data.api_secret_masked = '••••••••' + data.api_secret_tail
       }
       credential.value = data
+      // 检查用户是否已生成过密钥
+      hasViewedSecret.value = localStorage.getItem(secretViewedKey) === String(data.id)
     }
   } catch (err: any) {
     // 404 or no credential is normal
@@ -297,6 +330,34 @@ const handleApply = async () => {
   }
 }
 
+const handleFirstGenerate = async () => {
+  submitting.value = true
+  panelAlert.value = null
+  try {
+    const response = await apiCredentialAPI.regenerate()
+    const data = response.data.data
+    if (data?.api_secret) {
+      newSecret.value = data.api_secret
+    }
+    if (credential.value) {
+      localStorage.setItem(secretViewedKey, String(credential.value.id))
+      hasViewedSecret.value = true
+    }
+    await loadCredential()
+    panelAlert.value = {
+      level: 'success',
+      message: t('personalCenter.apiPanel.generateSuccess'),
+    }
+  } catch (err: any) {
+    panelAlert.value = {
+      level: 'error',
+      message: err?.message || t('personalCenter.apiPanel.regenerateFailed'),
+    }
+  } finally {
+    submitting.value = false
+  }
+}
+
 const handleRegenerate = () => {
   newSecret.value = ''
   showConfirm.value = true
@@ -310,6 +371,10 @@ const confirmRegenerate = async () => {
     const data = response.data.data
     if (data?.api_secret) {
       newSecret.value = data.api_secret
+    }
+    if (credential.value) {
+      localStorage.setItem(secretViewedKey, String(credential.value.id))
+      hasViewedSecret.value = true
     }
     // Reload credential to get updated masked secret
     await loadCredential()

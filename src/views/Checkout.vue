@@ -504,7 +504,7 @@ const normalizeManualFormSchema = (rawSchema: any): ManualFormField[] => {
 const manualFormProducts = computed<ManualFormProduct[]>(() => {
   const grouped = new Map<number, ManualFormProduct>()
   cartItems.value.forEach((item) => {
-    if (item.fulfillmentType !== 'manual') {
+    if (item.fulfillmentType !== 'manual' && item.fulfillmentType !== 'upstream') {
       return
     }
     const fields = normalizeManualFormSchema(item.manualFormSchema)
@@ -1038,6 +1038,7 @@ const hasItemStockSnapshot = (item: CartItem) => Boolean(String(item.skuStockSna
 
 const shouldEnforceItemStock = (item: CartItem) => {
   if (item.fulfillmentType === 'auto') return true
+  if (item.fulfillmentType === 'upstream') return true
   if (item.fulfillmentType !== 'manual') return false
   if (!hasItemStockSnapshot(item)) return false
   const total = normalizeManualStockTotal(item.skuManualStockTotal)
@@ -1049,6 +1050,11 @@ const shouldEnforceItemStock = (item: CartItem) => {
 
 const itemAvailableStock = (item: CartItem) => {
   if (!shouldEnforceItemStock(item)) return null
+  if (item.fulfillmentType === 'upstream') {
+    const upstreamStock = Number(item.skuUpstreamStock ?? 0)
+    if (upstreamStock === -1) return null // 无限库存
+    return Math.max(upstreamStock, 0)
+  }
   if (item.fulfillmentType === 'auto') {
     return normalizeStockNumber(item.skuAutoStockAvailable)
   }

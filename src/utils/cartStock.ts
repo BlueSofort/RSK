@@ -52,10 +52,24 @@ const shouldEnforceSkuStock = (product: any, sku: any) => {
   if (!product || !sku) return false
   const type = String(product?.fulfillment_type || '').trim()
   if (type === 'auto') return true
+  if (type === 'upstream') return true
   if (type !== 'manual') return false
   const total = normalizeManualStockTotal(sku?.manual_stock_total)
   if (total === -1) return false
   return true
+}
+
+const resolveSkuAvailableStock = (product: any, sku: any) => {
+  const type = String(product?.fulfillment_type || '').trim()
+  if (type === 'upstream') {
+    const upstreamStock = Number(sku?.upstream_stock ?? 0)
+    if (upstreamStock === -1) return -1 // 无限库存
+    return Math.max(upstreamStock, 0)
+  }
+  if (type === 'auto') {
+    return normalizeStockNumber(sku?.auto_stock_available)
+  }
+  return normalizeManualStockTotal(sku?.manual_stock_total)
 }
 
 export const refreshCartStockSnapshots = async (cartStore: CartStoreLike) => {
@@ -100,6 +114,7 @@ export const refreshCartStockSnapshots = async (cartStore: CartStoreLike) => {
     const manualStockLocked = normalizeStockNumber(matchedSku?.manual_stock_locked)
     const manualStockSold = normalizeStockNumber(matchedSku?.manual_stock_sold)
     const autoStockAvailable = normalizeStockNumber(matchedSku?.auto_stock_available)
+    const upstreamStock = normalizeManualStockTotal(matchedSku?.upstream_stock)
     const skuStockEnforced = shouldEnforceSkuStock(product, matchedSku)
 
     cartStore.patchItem(item.productId, item.skuId, {
@@ -111,6 +126,7 @@ export const refreshCartStockSnapshots = async (cartStore: CartStoreLike) => {
       skuManualStockLocked: manualStockLocked,
       skuManualStockSold: manualStockSold,
       skuAutoStockAvailable: autoStockAvailable,
+      skuUpstreamStock: upstreamStock,
       skuStockEnforced,
       skuStockSnapshotAt: new Date().toISOString(),
     })

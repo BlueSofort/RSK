@@ -327,6 +327,7 @@ const normalizeManualStockTotal = (value: unknown) => {
 const shouldEnforceSkuStock = (sku: any) => {
   if (!sku) return false
   if (product.value?.fulfillment_type === 'auto') return true
+  if (product.value?.fulfillment_type === 'upstream') return true
   if (product.value?.fulfillment_type !== 'manual') return false
   const total = normalizeManualStockTotal(sku?.manual_stock_total)
   if (total === -1) return false
@@ -335,6 +336,11 @@ const shouldEnforceSkuStock = (sku: any) => {
 
 const skuAvailableStock = (sku: any) => {
   if (!shouldEnforceSkuStock(sku)) return null
+  if (product.value?.fulfillment_type === 'upstream') {
+    const upstreamStock = Number(sku?.upstream_stock ?? 0)
+    if (upstreamStock === -1) return null // 无限库存
+    return Math.max(upstreamStock, 0)
+  }
   if (product.value?.fulfillment_type === 'auto') {
     return normalizeStockNumber(sku?.auto_stock_available)
   }
@@ -373,9 +379,8 @@ const canPurchase = computed(() => {
   if (product.value.is_sold_out) return false
   if (requiresSKUSelection.value) return false
   if (product.value.stock_status === 'out_of_stock') return false
-  if (product.value.fulfillment_type !== 'manual') return true
-  if (!selectedSku.value) return true
-  return isSkuPurchasable(selectedSku.value)
+  if (selectedSku.value && !isSkuPurchasable(selectedSku.value)) return false
+  return true
 })
 const cannotPurchaseReason = computed(() => {
   if (!product.value) return ''
@@ -546,6 +551,7 @@ const addToCart = () => {
     skuManualStockLocked: normalizeStockNumber(sku?.manual_stock_locked),
     skuManualStockSold: normalizeStockNumber(sku?.manual_stock_sold),
     skuAutoStockAvailable: normalizeStockNumber(sku?.auto_stock_available),
+    skuUpstreamStock: normalizeManualStockTotal(sku?.upstream_stock),
     skuStockEnforced: shouldEnforceSkuStock(sku),
     slug: product.value.slug,
     title: product.value.title,

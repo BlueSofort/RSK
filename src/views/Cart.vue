@@ -306,6 +306,7 @@ const hasItemStockSnapshot = (item: CartItem) => Boolean(String(item.skuStockSna
 
 const shouldEnforceItemStock = (item: CartItem) => {
   if (item.fulfillmentType === 'auto') return true
+  if (item.fulfillmentType === 'upstream') return true
   if (item.fulfillmentType !== 'manual') return false
   if (!hasItemStockSnapshot(item)) return false
   const total = normalizeManualStockTotal(item.skuManualStockTotal)
@@ -317,6 +318,11 @@ const shouldEnforceItemStock = (item: CartItem) => {
 
 const itemAvailableStock = (item: CartItem) => {
   if (!shouldEnforceItemStock(item)) return null
+  if (item.fulfillmentType === 'upstream') {
+    const upstreamStock = Number(item.skuUpstreamStock ?? 0)
+    if (upstreamStock === -1) return null
+    return Math.max(upstreamStock, 0)
+  }
   if (item.fulfillmentType === 'auto') {
     return normalizeStockNumber(item.skuAutoStockAvailable)
   }
