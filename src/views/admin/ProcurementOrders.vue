@@ -2,7 +2,6 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { adminAPI } from '@/api/admin'
-import IdCell from '@/components/IdCell.vue'
 import { getLocalizedText, formatMoney } from '@/utils/format'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -422,7 +421,7 @@ onMounted(() => {
             <div>
               <span class="text-muted-foreground">{{ t('procurement.detail.profit') }}</span>
               <div class="mt-0.5 font-medium" :class="profitClass(order)">
-                {{ profitAmount(order) !== null ? formatMoney(profitAmount(order), order.currency) : '-' }}
+                {{ profitAmount(order) !== null ? formatMoney(profitAmount(order)!, order.currency) : '-' }}
               </div>
             </div>
             <div>
@@ -539,7 +538,7 @@ onMounted(() => {
               <div class="p-4 text-center">
                 <div class="text-xs text-muted-foreground">{{ t('procurement.detail.profit') }}</div>
                 <div class="mt-1 text-lg font-bold" :class="profitClass(detailOrder)">
-                  {{ profitAmount(detailOrder) !== null ? formatMoney(profitAmount(detailOrder), detailOrder.currency) : '-' }}
+                  {{ profitAmount(detailOrder) !== null ? formatMoney(profitAmount(detailOrder)!, detailOrder.currency) : '-' }}
                 </div>
               </div>
             </div>

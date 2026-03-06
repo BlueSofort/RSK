@@ -50,7 +50,7 @@ const fetchCredentials = async (page = 1) => {
     if (filterStatus.value && filterStatus.value !== '__all__') params.status = filterStatus.value
     if (searchQuery.value.trim()) params.search = searchQuery.value.trim()
     const res = await adminAPI.getApiCredentials(params)
-    credentials.value = res.data?.data || []
+    credentials.value = (Array.isArray(res.data?.data) ? res.data.data : []) as any[]
     const pg = res.data?.pagination
     if (pg) {
       pagination.page = pg.page
@@ -206,7 +206,7 @@ onMounted(() => fetchCredentials())
             <TableCell :colspan="8" class="text-center py-8 text-muted-foreground">{{ t('apiCredentials.empty') }}</TableCell>
           </TableRow>
           <TableRow v-for="cred in credentials" :key="cred.id">
-            <TableCell><IdCell :id="cred.id" /></TableCell>
+            <TableCell><IdCell :value="cred.id" /></TableCell>
             <TableCell>
               <div class="text-sm">
                 <div class="font-medium">{{ cred.user?.display_name || '-' }}</div>

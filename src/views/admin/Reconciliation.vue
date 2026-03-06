@@ -9,7 +9,6 @@ import { Dialog, DialogScrollContent, DialogHeader, DialogTitle } from '@/compon
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { confirmAction } from '@/utils/confirm'
 import { notifyError, notifySuccess } from '@/utils/notify'
 
 const { t } = useI18n()
@@ -131,11 +130,6 @@ const handleSearch = () => {
   fetchJobs(1)
 }
 
-const connectionName = (id: number | string) => {
-  const conn = connections.value.find((c: any) => String(c.id) === String(id))
-  return conn ? conn.name : String(id)
-}
-
 const handleNewJob = async () => {
   if (!newJobForm.connection_id || !newJobForm.time_range_start || !newJobForm.time_range_end) return
   submitting.value = true
@@ -162,7 +156,7 @@ const handleNewJob = async () => {
 const openDetail = async (job: any) => {
   try {
     const res = await adminAPI.getReconciliationJob(job.id, { items_page: 1, items_page_size: 20 })
-    const data = res.data.data
+    const data = res.data.data as any
     detailJob.value = data.job || job
     detailItems.value = data.items || []
     detailItemsTotal.value = data.items_total || 0
@@ -179,7 +173,7 @@ const loadDetailItems = async (page: number) => {
   if (!detailJob.value) return
   try {
     const res = await adminAPI.getReconciliationJob(detailJob.value.id, { items_page: page, items_page_size: 20 })
-    const data = res.data.data
+    const data = res.data.data as any
     detailItems.value = data.items || []
     detailItemsTotal.value = data.items_total || 0
     detailItemsPage.value = page
