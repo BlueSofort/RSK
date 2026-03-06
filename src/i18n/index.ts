@@ -151,6 +151,7 @@ const messages = {
       },
       form: {
         connectionId: '选择连接',
+        selectConnection: '请选择站点连接',
         type: '对账类型',
         timeRangeStart: '开始时间',
         timeRangeEnd: '结束时间',
@@ -160,7 +161,8 @@ const messages = {
       filters: {
         allStatus: '全部状态',
         allTypes: '全部类型',
-        connectionId: '连接 ID',
+        connectionId: '站点连接',
+        allConnections: '全部连接',
       },
       detail: {
         title: '对账详情',
@@ -2306,6 +2308,7 @@ const messages = {
       },
       form: {
         connectionId: '選擇連接',
+        selectConnection: '請選擇站點連接',
         type: '對帳類型',
         timeRangeStart: '開始時間',
         timeRangeEnd: '結束時間',
@@ -2315,7 +2318,8 @@ const messages = {
       filters: {
         allStatus: '全部狀態',
         allTypes: '全部類型',
-        connectionId: '連接 ID',
+        connectionId: '站點連接',
+        allConnections: '全部連接',
       },
       detail: {
         title: '對帳詳情',
@@ -4461,6 +4465,7 @@ const messages = {
       },
       form: {
         connectionId: 'Select Connection',
+        selectConnection: 'Select a site connection',
         type: 'Reconciliation Type',
         timeRangeStart: 'Start Time',
         timeRangeEnd: 'End Time',
@@ -4470,7 +4475,8 @@ const messages = {
       filters: {
         allStatus: 'All Status',
         allTypes: 'All Types',
-        connectionId: 'Connection ID',
+        connectionId: 'Connection',
+        allConnections: 'All Connections',
       },
       detail: {
         title: 'Reconciliation Detail',

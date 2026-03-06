@@ -26,8 +26,24 @@ const jumpPage = ref('')
 const filters = reactive({
   status: '__all__',
   type: '__all__',
-  connection_id: '',
+  connection_id: '__all__',
 })
+
+// 站点连接列表
+const connections = ref<any[]>([])
+const loadingConnections = ref(false)
+
+const fetchConnections = async () => {
+  loadingConnections.value = true
+  try {
+    const res = await adminAPI.getSiteConnections({ page: 1, page_size: 200 })
+    connections.value = (res.data.data as any[]) || []
+  } catch {
+    connections.value = []
+  } finally {
+    loadingConnections.value = false
+  }
+}
 
 // Job list
 const statusOptions = [
@@ -53,6 +69,11 @@ const newJobForm = reactive({
   time_range_start: '',
   time_range_end: '',
 })
+
+const openNewJob = () => {
+  if (connections.value.length === 0) fetchConnections()
+  showNewJob.value = true
+}
 const submitting = ref(false)
 
 // Detail dialog
@@ -74,7 +95,7 @@ const fetchJobs = async (page = 1) => {
     const params: any = { page, page_size: pagination.page_size }
     if (filters.status && filters.status !== '__all__') params.status = filters.status
     if (filters.type && filters.type !== '__all__') params.type = filters.type
-    if (filters.connection_id) params.connection_id = filters.connection_id
+    if (filters.connection_id && filters.connection_id !== '__all__') params.connection_id = filters.connection_id
 
     const res = await adminAPI.getReconciliationJobs(params)
     jobs.value = (res.data.data as any[]) || []
@@ -108,6 +129,11 @@ const jumpToPage = () => {
 
 const handleSearch = () => {
   fetchJobs(1)
+}
+
+const connectionName = (id: number | string) => {
+  const conn = connections.value.find((c: any) => String(c.id) === String(id))
+  return conn ? conn.name : String(id)
 }
 
 const handleNewJob = async () => {
@@ -228,6 +254,7 @@ const formatTime = (raw?: string) => {
 }
 
 onMounted(() => {
+  fetchConnections()
   fetchJobs()
 })
 </script>
@@ -236,7 +263,7 @@ onMounted(() => {
   <div class="space-y-6">
     <div class="flex items-center justify-between">
       <h1 class="text-2xl font-semibold">{{ t('reconciliation.title') }}</h1>
-      <Button size="sm" @click="showNewJob = true">{{ t('reconciliation.newJob') }}</Button>
+      <Button size="sm" @click="openNewJob">{{ t('reconciliation.newJob') }}</Button>
     </div>
 
     <!-- Filters -->
@@ -269,7 +296,17 @@ onMounted(() => {
       </div>
       <div>
         <label class="mb-1.5 block text-xs font-medium text-muted-foreground">{{ t('reconciliation.filters.connectionId') }}</label>
-        <Input v-model="filters.connection_id" class="h-9 w-32" placeholder="ID" />
+        <Select v-model="filters.connection_id">
+          <SelectTrigger class="h-9 w-48">
+            <SelectValue :placeholder="t('reconciliation.filters.allConnections')" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">{{ t('reconciliation.filters.allConnections') }}</SelectItem>
+            <SelectItem v-for="conn in connections" :key="conn.id" :value="String(conn.id)">
+              {{ conn.name || `#${conn.id}` }}
+            </SelectItem>
+          </SelectContent>
+        </Select>
       </div>
       <Button size="sm" class="h-9" @click="handleSearch">{{ t('admin.common.refresh') }}</Button>
     </div>
@@ -368,7 +405,16 @@ onMounted(() => {
         <div class="space-y-4 pt-2">
           <div>
             <label class="mb-1.5 block text-xs font-medium text-muted-foreground">{{ t('reconciliation.form.connectionId') }}</label>
-            <Input v-model="newJobForm.connection_id" class="h-9" placeholder="Connection ID" />
+            <Select v-model="newJobForm.connection_id">
+              <SelectTrigger class="h-9">
+                <SelectValue :placeholder="t('reconciliation.form.selectConnection')" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="conn in connections" :key="conn.id" :value="String(conn.id)">
+                  {{ conn.name || `#${conn.id}` }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <label class="mb-1.5 block text-xs font-medium text-muted-foreground">{{ t('reconciliation.form.type') }}</label>
