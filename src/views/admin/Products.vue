@@ -22,6 +22,7 @@ const uploading = ref(false)
 const submitting = ref(false)
 const showModal = ref(false)
 const isEditing = ref(false)
+const editingIsMapped = ref(false)
 const searchQuery = ref('')
 const manualStockStatus = ref('all')
 const jumpPage = ref('')
@@ -501,6 +502,7 @@ const jumpToPage = () => {
 
 const openCreateModal = () => {
   isEditing.value = false
+  editingIsMapped.value = false
   currentLang.value = 'zh-CN'
   resetForm()
   showModal.value = true
@@ -508,6 +510,7 @@ const openCreateModal = () => {
 
 const openEditModal = (product: any) => {
   isEditing.value = true
+  editingIsMapped.value = Boolean(product.is_mapped)
   currentLang.value = 'zh-CN'
 
   let imagesList: string[] = []
@@ -808,6 +811,12 @@ watch(
                       {{ product.fulfillment_type === 'auto' ? t('admin.products.fulfillmentType.auto') : t('admin.products.fulfillmentType.manual') }}
                     </span>
                     <span
+                      v-if="product.is_mapped"
+                      class="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[11px] text-indigo-700"
+                    >
+                      {{ t('admin.products.mappedProduct') }}
+                    </span>
+                    <span
                       class="rounded-full border px-2 py-0.5 text-[11px]"
                       :class="product.is_affiliate_enabled ? 'border-sky-200 bg-sky-50 text-sky-700' : 'border-border bg-muted/30 text-muted-foreground'"
                     >
@@ -982,7 +991,7 @@ watch(
 
             <div class="col-span-1">
               <label class="block text-xs font-medium text-muted-foreground mb-1.5">{{ t('admin.products.form.fulfillmentType') }}</label>
-              <Select v-model="form.fulfillment_type">
+              <Select v-model="form.fulfillment_type" :disabled="editingIsMapped">
                 <SelectTrigger class="h-9 w-full">
                   <SelectValue :placeholder="t('admin.products.fulfillmentType.manual')" />
                 </SelectTrigger>
@@ -991,6 +1000,7 @@ watch(
                   <SelectItem value="auto">{{ t('admin.products.fulfillmentType.auto') }}</SelectItem>
                 </SelectContent>
               </Select>
+              <p v-if="editingIsMapped" class="mt-1 text-xs text-indigo-600">{{ t('admin.products.mappedFulfillmentLocked') }}</p>
             </div>
 
             <div class="col-span-1">

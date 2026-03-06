@@ -23,7 +23,7 @@ const pagination = reactive({
 const jumpPage = ref('')
 
 const filters = reactive({
-  status: '',
+  status: '__all__',
   connection_id: '',
   order_no: '',
 })
@@ -34,7 +34,7 @@ const retryingId = ref<number | null>(null)
 const cancelingId = ref<number | null>(null)
 
 const statusOptions = [
-  { value: '', key: 'procurement.filters.allStatus' },
+  { value: '__all__', key: 'procurement.filters.allStatus' },
   { value: 'pending', key: 'procurement.status.pending' },
   { value: 'submitted', key: 'procurement.status.submitted' },
   { value: 'accepted', key: 'procurement.status.accepted' },
@@ -52,7 +52,7 @@ const fetchOrders = async (page = 1) => {
       page,
       page_size: pagination.page_size,
     }
-    if (filters.status) params.status = filters.status
+    if (filters.status && filters.status !== '__all__') params.status = filters.status
     if (filters.connection_id) params.connection_id = filters.connection_id
     if (filters.order_no) params.order_no = filters.order_no
 

@@ -350,4 +350,18 @@ export const adminAPI = {
   getProcurementOrder: (id: number) => api.get<ApiResponse>(`/admin/procurement-orders/${id}`),
   retryProcurementOrder: (id: number) => api.post<ApiResponse>(`/admin/procurement-orders/${id}/retry`),
   cancelProcurementOrder: (id: number) => api.post<ApiResponse>(`/admin/procurement-orders/${id}/cancel`),
+
+  // 对账管理
+  runReconciliation: (data: any) => api.post<ApiResponse>('/admin/reconciliation/run', data),
+  getReconciliationJobs: (params?: any) => api.get<ApiResponse>('/admin/reconciliation/jobs', { params }),
+  getReconciliationJob: (id: number, params?: any) => api.get<ApiResponse>(`/admin/reconciliation/jobs/${id}`, { params }),
+  resolveReconciliationItem: (id: number, data: any) => api.put<ApiResponse>(`/admin/reconciliation/items/${id}/resolve`, data),
+
+  // API 凭证管理
+  getApiCredentials: (params?: any) => api.get<ApiResponse>('/admin/api-credentials', { params }),
+  getApiCredential: (id: number) => api.get<ApiResponse>(`/admin/api-credentials/${id}`),
+  approveApiCredential: (id: number) => api.post<ApiResponse>(`/admin/api-credentials/${id}/approve`),
+  rejectApiCredential: (id: number, data: { reason: string }) => api.post<ApiResponse>(`/admin/api-credentials/${id}/reject`, data),
+  updateApiCredentialStatus: (id: number, data: { is_active: boolean }) => api.put<ApiResponse>(`/admin/api-credentials/${id}/status`, data),
+  deleteApiCredential: (id: number) => api.delete<ApiResponse>(`/admin/api-credentials/${id}`),
 }

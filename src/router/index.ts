@@ -167,6 +167,18 @@ const routes = [
         component: () => import('@/views/admin/ProcurementOrders.vue'),
         meta: { permission: 'GET:/admin/procurement-orders' },
       },
+      {
+        path: 'reconciliation',
+        name: 'reconciliation',
+        component: () => import('@/views/admin/Reconciliation.vue'),
+        meta: { permission: 'GET:/admin/reconciliation/jobs' },
+      },
+      {
+        path: 'api-credentials',
+        name: 'api-credentials',
+        component: () => import('@/views/admin/ApiCredentials.vue'),
+        meta: { permission: 'GET:/admin/api-credentials' },
+      },
     ],
   },
 ]

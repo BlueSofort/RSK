@@ -152,10 +152,10 @@ const handlePing = async (conn: any) => {
   pingingId.value = conn.id
   try {
     await adminAPI.pingSiteConnection(conn.id)
-    notifySuccess('Ping 成功')
+    notifySuccess(t('siteConnections.ping.success'))
     fetchConnections(pagination.page)
   } catch (err: any) {
-    notifyError('Ping 失败: ' + (err?.response?.data?.message || err?.message || ''))
+    notifyError(t('siteConnections.ping.failed') + ': ' + (err?.response?.data?.message || err?.message || ''))
   } finally {
     pingingId.value = null
   }
@@ -174,7 +174,7 @@ const handleToggleStatus = async (conn: any) => {
 
 const handleDelete = async (conn: any) => {
   const confirmed = await confirmAction({
-    description: `确认删除连接「${conn.name || '#' + conn.id}」？`,
+    description: t('siteConnections.delete.confirm', { name: conn.name || '#' + conn.id }),
     confirmText: t('admin.common.delete'),
     variant: 'destructive',
   })
@@ -200,16 +200,9 @@ const statusBadgeClass = (status: string) => {
 }
 
 const statusLabel = (status: string) => {
-  switch (status) {
-    case 'active':
-      return '已激活'
-    case 'pending':
-      return '待激活'
-    case 'disabled':
-      return '已禁用'
-    default:
-      return status
-  }
+  const key = `siteConnections.status.${status}`
+  const translated = t(key)
+  return translated !== key ? translated : status
 }
 
 const formatTime = (raw?: string) => {
@@ -227,21 +220,21 @@ onMounted(() => {
 <template>
   <div class="space-y-6">
     <div class="flex items-center justify-between">
-      <h1 class="text-2xl font-semibold">连接管理</h1>
-      <Button @click="openCreateModal">新建连接</Button>
+      <h1 class="text-2xl font-semibold">{{ t('siteConnections.title') }}</h1>
+      <Button @click="openCreateModal">{{ t('siteConnections.createButton') }}</Button>
     </div>
 
     <div class="rounded-xl border border-border bg-card">
       <Table>
         <TableHeader class="border-b border-border bg-muted/40 text-xs uppercase text-muted-foreground">
           <TableRow>
-            <TableHead class="px-6 py-3">ID</TableHead>
-            <TableHead class="px-6 py-3">名称</TableHead>
-            <TableHead class="px-6 py-3">Base URL</TableHead>
-            <TableHead class="px-6 py-3">协议</TableHead>
-            <TableHead class="px-6 py-3">状态</TableHead>
-            <TableHead class="px-6 py-3">最后 Ping</TableHead>
-            <TableHead class="px-6 py-3 text-right">操作</TableHead>
+            <TableHead class="px-6 py-3">{{ t('siteConnections.columns.id') }}</TableHead>
+            <TableHead class="px-6 py-3">{{ t('siteConnections.columns.name') }}</TableHead>
+            <TableHead class="px-6 py-3">{{ t('siteConnections.columns.baseUrl') }}</TableHead>
+            <TableHead class="px-6 py-3">{{ t('siteConnections.columns.protocol') }}</TableHead>
+            <TableHead class="px-6 py-3">{{ t('siteConnections.columns.status') }}</TableHead>
+            <TableHead class="px-6 py-3">{{ t('siteConnections.columns.lastPing') }}</TableHead>
+            <TableHead class="px-6 py-3 text-right">{{ t('siteConnections.columns.actions') }}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody class="divide-y divide-border">
@@ -249,7 +242,7 @@ onMounted(() => {
             <TableCell colspan="7" class="px-6 py-8 text-center text-muted-foreground">{{ t('admin.common.loading') }}</TableCell>
           </TableRow>
           <TableRow v-else-if="connections.length === 0">
-            <TableCell colspan="7" class="px-6 py-8 text-center text-muted-foreground">暂无数据</TableCell>
+            <TableCell colspan="7" class="px-6 py-8 text-center text-muted-foreground">{{ t('siteConnections.empty') }}</TableCell>
           </TableRow>
           <TableRow v-for="conn in connections" :key="conn.id" class="hover:bg-muted/30">
             <TableCell class="px-6 py-4">
@@ -276,10 +269,10 @@ onMounted(() => {
                   :disabled="pingingId === conn.id"
                   @click="handlePing(conn)"
                 >
-                  {{ pingingId === conn.id ? 'Ping...' : 'Ping' }}
+                  {{ pingingId === conn.id ? t('siteConnections.ping.loading') : 'Ping' }}
                 </Button>
                 <Button size="sm" variant="outline" @click="handleToggleStatus(conn)">
-                  {{ conn.status === 'active' ? '禁用' : '启用' }}
+                  {{ conn.status === 'active' ? t('siteConnections.actions.disable') : t('siteConnections.actions.enable') }}
                 </Button>
                 <Button size="sm" variant="destructive" @click="handleDelete(conn)">{{ t('admin.common.delete') }}</Button>
               </div>
@@ -308,32 +301,32 @@ onMounted(() => {
     <Dialog v-model:open="showModal" @update:open="(value: boolean) => { if (!value) closeModal() }">
       <DialogScrollContent class="w-full max-w-2xl" @interact-outside="(e: Event) => e.preventDefault()">
         <DialogHeader>
-          <DialogTitle>{{ isEditing ? '编辑连接' : '新建连接' }}</DialogTitle>
+          <DialogTitle>{{ isEditing ? t('siteConnections.editTitle') : t('siteConnections.createTitle') }}</DialogTitle>
         </DialogHeader>
 
         <form class="space-y-6" @submit.prevent="handleSubmit">
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div class="md:col-span-2">
-              <label class="mb-1.5 block text-xs font-medium text-muted-foreground">名称</label>
-              <Input v-model="form.name" required placeholder="连接名称" />
+              <label class="mb-1.5 block text-xs font-medium text-muted-foreground">{{ t('siteConnections.form.name') }}</label>
+              <Input v-model="form.name" required :placeholder="t('siteConnections.form.namePlaceholder')" />
             </div>
             <div class="md:col-span-2">
-              <label class="mb-1.5 block text-xs font-medium text-muted-foreground">Base URL</label>
-              <Input v-model="form.base_url" required placeholder="https://example.com" />
+              <label class="mb-1.5 block text-xs font-medium text-muted-foreground">{{ t('siteConnections.form.baseUrl') }}</label>
+              <Input v-model="form.base_url" required :placeholder="t('siteConnections.form.baseUrlPlaceholder')" />
             </div>
             <div>
-              <label class="mb-1.5 block text-xs font-medium text-muted-foreground">API Key</label>
-              <Input v-model="form.api_key" placeholder="API Key" />
+              <label class="mb-1.5 block text-xs font-medium text-muted-foreground">{{ t('siteConnections.form.apiKey') }}</label>
+              <Input v-model="form.api_key" :placeholder="t('siteConnections.form.apiKeyPlaceholder')" />
             </div>
             <div>
-              <label class="mb-1.5 block text-xs font-medium text-muted-foreground">API Secret</label>
-              <Input v-model="form.api_secret" type="password" placeholder="API Secret" />
+              <label class="mb-1.5 block text-xs font-medium text-muted-foreground">{{ t('siteConnections.form.apiSecret') }}</label>
+              <Input v-model="form.api_secret" type="password" :placeholder="t('siteConnections.form.apiSecretPlaceholder')" />
             </div>
             <div>
-              <label class="mb-1.5 block text-xs font-medium text-muted-foreground">协议</label>
+              <label class="mb-1.5 block text-xs font-medium text-muted-foreground">{{ t('siteConnections.form.protocol') }}</label>
               <Select v-model="form.protocol">
                 <SelectTrigger class="h-9 w-full">
-                  <SelectValue placeholder="选择协议" />
+                  <SelectValue :placeholder="t('siteConnections.form.protocolPlaceholder')" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="dujiao-next">dujiao-next</SelectItem>
@@ -341,22 +334,22 @@ onMounted(() => {
               </Select>
             </div>
             <div>
-              <label class="mb-1.5 block text-xs font-medium text-muted-foreground">回调 URL</label>
-              <Input v-model="form.callback_url" placeholder="https://your-site.com/callback" />
+              <label class="mb-1.5 block text-xs font-medium text-muted-foreground">{{ t('siteConnections.form.callbackUrl') }}</label>
+              <Input v-model="form.callback_url" :placeholder="t('siteConnections.form.callbackUrlPlaceholder')" />
             </div>
             <div>
-              <label class="mb-1.5 block text-xs font-medium text-muted-foreground">最大重试次数</label>
+              <label class="mb-1.5 block text-xs font-medium text-muted-foreground">{{ t('siteConnections.form.retryMax') }}</label>
               <Input v-model.number="form.retry_max" type="number" min="0" placeholder="3" />
             </div>
             <div>
-              <label class="mb-1.5 block text-xs font-medium text-muted-foreground">重试间隔（秒，逗号分隔）</label>
+              <label class="mb-1.5 block text-xs font-medium text-muted-foreground">{{ t('siteConnections.form.retryIntervals') }}</label>
               <Input v-model="form.retry_intervals" placeholder="30,60,120" />
             </div>
           </div>
 
           <div class="flex justify-end gap-3 border-t border-border pt-6">
             <Button type="button" variant="outline" @click="closeModal">{{ t('admin.common.cancel') }}</Button>
-            <Button type="submit">{{ isEditing ? t('admin.common.save') : '创建' }}</Button>
+            <Button type="submit">{{ isEditing ? t('admin.common.save') : t('admin.common.create') }}</Button>
           </div>
         </form>
       </DialogScrollContent>

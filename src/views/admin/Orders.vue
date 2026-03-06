@@ -46,6 +46,7 @@ const statusEdits = reactive<Record<number, string>>({})
 const showDetail = ref(false)
 const showFulfillmentModal = ref(false)
 const selectedOrder = ref<any>(null)
+const procurementOrder = ref<any>(null)
 const detailLoading = ref(false)
 const detailError = ref('')
 const fulfillmentParentId = ref<number | null>(null)
@@ -152,9 +153,20 @@ const fetchOrderDetail = async (orderId: number) => {
   detailLoading.value = true
   detailError.value = ''
   selectedOrder.value = null
+  procurementOrder.value = null
   try {
     const response = await adminAPI.getOrder(orderId)
     selectedOrder.value = response.data.data
+    // Try to fetch associated procurement order
+    try {
+      const procRes = await adminAPI.getProcurementOrders({ order_no: selectedOrder.value?.order_no, page_size: 1 })
+      const procList = procRes.data.data
+      if (Array.isArray(procList) && procList.length > 0) {
+        procurementOrder.value = procList[0]
+      }
+    } catch {
+      // silently ignore - procurement order may not exist
+    }
   } catch (err: any) {
     detailError.value = err?.message || t('admin.orders.detailFetchFailed')
   } finally {
@@ -1009,6 +1021,47 @@ watch(
               </div>
               <div v-else class="mt-3 rounded-lg border border-border bg-background p-3 text-xs text-muted-foreground whitespace-pre-wrap">
                 {{ selectedOrder.fulfillment.payload }}
+              </div>
+            </div>
+
+            <div v-if="procurementOrder" class="rounded-xl border border-indigo-200 bg-indigo-50/50 p-4">
+              <h3 class="text-sm font-semibold text-indigo-800 mb-3">{{ t('orderDetail.procurementTitle') }}</h3>
+              <div class="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <span class="text-xs text-muted-foreground">{{ t('procurement.columns.id') }}:</span>
+                  <span class="ml-1 font-mono">{{ procurementOrder.id }}</span>
+                </div>
+                <div>
+                  <span class="text-xs text-muted-foreground">{{ t('procurement.columns.status') }}:</span>
+                  <span
+                    class="ml-1 inline-flex rounded-full border px-2 py-0.5 text-xs"
+                    :class="{
+                      'text-yellow-700 border-yellow-200 bg-yellow-50': procurementOrder.status === 'pending',
+                      'text-blue-700 border-blue-200 bg-blue-50': ['submitted', 'accepted'].includes(procurementOrder.status),
+                      'text-emerald-700 border-emerald-200 bg-emerald-50': ['fulfilled', 'completed'].includes(procurementOrder.status),
+                      'text-red-700 border-red-200 bg-red-50': ['failed', 'rejected'].includes(procurementOrder.status),
+                      'text-muted-foreground border-border bg-muted/30': procurementOrder.status === 'canceled',
+                    }"
+                  >
+                    {{ t('procurement.status.' + procurementOrder.status) }}
+                  </span>
+                </div>
+                <div>
+                  <span class="text-xs text-muted-foreground">{{ t('procurement.columns.connection') }}:</span>
+                  <span class="ml-1">{{ procurementOrder.connection?.name || procurementOrder.connection_id || '-' }}</span>
+                </div>
+                <div>
+                  <span class="text-xs text-muted-foreground">{{ t('procurement.columns.upstreamOrderNo') }}:</span>
+                  <span class="ml-1 font-mono">{{ procurementOrder.upstream_order_no || '-' }}</span>
+                </div>
+                <div>
+                  <span class="text-xs text-muted-foreground">{{ t('procurement.columns.upstreamAmount') }}:</span>
+                  <span class="ml-1">{{ procurementOrder.upstream_amount || '-' }}</span>
+                </div>
+                <div v-if="procurementOrder.error_message">
+                  <span class="text-xs text-muted-foreground">{{ t('procurement.columns.errorMessage') }}:</span>
+                  <span class="ml-1 text-red-600 text-xs">{{ procurementOrder.error_message }}</span>
+                </div>
               </div>
             </div>
 

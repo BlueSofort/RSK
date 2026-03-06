@@ -143,7 +143,7 @@ const handleImport = async () => {
     })
     closeImportModal()
     fetchMappings(1)
-    notifySuccess('导入成功')
+    notifySuccess(t('productMappings.import.success'))
   } catch (err: any) {
     notifyError(err?.response?.data?.message || err?.message)
   }
@@ -153,10 +153,10 @@ const handleSync = async (mapping: any) => {
   syncingId.value = mapping.id
   try {
     await adminAPI.syncProductMapping(mapping.id)
-    notifySuccess('同步成功')
+    notifySuccess(t('productMappings.sync.success'))
     fetchMappings(pagination.page)
   } catch (err: any) {
-    notifyError('同步失败: ' + (err?.response?.data?.message || err?.message || ''))
+    notifyError(t('productMappings.sync.failed') + ': ' + (err?.response?.data?.message || err?.message || ''))
   } finally {
     syncingId.value = null
   }
@@ -175,7 +175,7 @@ const handleToggleStatus = async (mapping: any) => {
 
 const handleDelete = async (mapping: any) => {
   const confirmed = await confirmAction({
-    description: `确认删除映射 #${mapping.id}？`,
+    description: t('productMappings.delete.confirm', { id: mapping.id }),
     confirmText: t('admin.common.delete'),
     variant: 'destructive',
   })
@@ -210,18 +210,18 @@ onMounted(() => {
 <template>
   <div class="space-y-6">
     <div class="flex items-center justify-between">
-      <h1 class="text-2xl font-semibold">商品映射</h1>
-      <Button @click="openImportModal">从上游导入</Button>
+      <h1 class="text-2xl font-semibold">{{ t('productMappings.title') }}</h1>
+      <Button @click="openImportModal">{{ t('productMappings.importButton') }}</Button>
     </div>
 
     <div class="rounded-xl border border-border bg-card p-4 shadow-sm">
       <div class="flex flex-wrap items-center gap-3">
         <Select v-model="filters.connection_id" @update:modelValue="handleFilterChange">
           <SelectTrigger class="h-9 w-[220px]">
-            <SelectValue placeholder="筛选连接" />
+            <SelectValue :placeholder="t('productMappings.filter.connectionPlaceholder')" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="__all__">全部连接</SelectItem>
+            <SelectItem value="__all__">{{ t('productMappings.filter.allConnections') }}</SelectItem>
             <SelectItem v-for="conn in connections" :key="conn.id" :value="String(conn.id)">{{ conn.name }}</SelectItem>
           </SelectContent>
         </Select>
@@ -232,13 +232,13 @@ onMounted(() => {
       <Table>
         <TableHeader class="border-b border-border bg-muted/40 text-xs uppercase text-muted-foreground">
           <TableRow>
-            <TableHead class="px-6 py-3">ID</TableHead>
-            <TableHead class="px-6 py-3">连接</TableHead>
-            <TableHead class="px-6 py-3">本地商品</TableHead>
-            <TableHead class="px-6 py-3">上游商品 ID</TableHead>
-            <TableHead class="px-6 py-3">状态</TableHead>
-            <TableHead class="px-6 py-3">最后同步</TableHead>
-            <TableHead class="px-6 py-3 text-right">操作</TableHead>
+            <TableHead class="px-6 py-3">{{ t('productMappings.columns.id') }}</TableHead>
+            <TableHead class="px-6 py-3">{{ t('productMappings.columns.connection') }}</TableHead>
+            <TableHead class="px-6 py-3">{{ t('productMappings.columns.localProduct') }}</TableHead>
+            <TableHead class="px-6 py-3">{{ t('productMappings.columns.upstreamProductId') }}</TableHead>
+            <TableHead class="px-6 py-3">{{ t('productMappings.columns.status') }}</TableHead>
+            <TableHead class="px-6 py-3">{{ t('productMappings.columns.lastSynced') }}</TableHead>
+            <TableHead class="px-6 py-3 text-right">{{ t('productMappings.columns.actions') }}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody class="divide-y divide-border">
@@ -246,7 +246,7 @@ onMounted(() => {
             <TableCell colspan="7" class="px-6 py-8 text-center text-muted-foreground">{{ t('admin.common.loading') }}</TableCell>
           </TableRow>
           <TableRow v-else-if="mappings.length === 0">
-            <TableCell colspan="7" class="px-6 py-8 text-center text-muted-foreground">暂无数据</TableCell>
+            <TableCell colspan="7" class="px-6 py-8 text-center text-muted-foreground">{{ t('productMappings.empty') }}</TableCell>
           </TableRow>
           <TableRow v-for="mapping in mappings" :key="mapping.id" class="hover:bg-muted/30">
             <TableCell class="px-6 py-4">
@@ -266,7 +266,7 @@ onMounted(() => {
                 class="inline-flex rounded-full border px-2.5 py-1 text-xs"
                 :class="mapping.is_active ? 'text-emerald-700 border-emerald-200 bg-emerald-50' : 'text-muted-foreground border-border bg-muted/30'"
               >
-                {{ mapping.is_active ? '启用' : '禁用' }}
+                {{ mapping.is_active ? t('productMappings.status.active') : t('productMappings.status.inactive') }}
               </span>
             </TableCell>
             <TableCell class="px-6 py-4 text-xs text-muted-foreground">{{ formatTime(mapping.last_synced_at) }}</TableCell>
@@ -278,10 +278,10 @@ onMounted(() => {
                   :disabled="syncingId === mapping.id"
                   @click="handleSync(mapping)"
                 >
-                  {{ syncingId === mapping.id ? '同步中...' : '同步' }}
+                  {{ syncingId === mapping.id ? t('productMappings.actions.syncing') : t('productMappings.actions.sync') }}
                 </Button>
                 <Button size="sm" variant="outline" @click="handleToggleStatus(mapping)">
-                  {{ mapping.is_active ? '禁用' : '启用' }}
+                  {{ mapping.is_active ? t('productMappings.actions.disable') : t('productMappings.actions.enable') }}
                 </Button>
                 <Button size="sm" variant="destructive" @click="handleDelete(mapping)">{{ t('admin.common.delete') }}</Button>
               </div>
@@ -310,16 +310,16 @@ onMounted(() => {
     <Dialog v-model:open="showImportModal" @update:open="(value: boolean) => { if (!value) closeImportModal() }">
       <DialogScrollContent class="w-full max-w-xl" @interact-outside="(e: Event) => e.preventDefault()">
         <DialogHeader>
-          <DialogTitle>从上游导入商品</DialogTitle>
+          <DialogTitle>{{ t('productMappings.importTitle') }}</DialogTitle>
         </DialogHeader>
 
         <form class="space-y-6" @submit.prevent="handleImport">
           <div class="space-y-4">
             <div>
-              <label class="mb-1.5 block text-xs font-medium text-muted-foreground">选择连接</label>
+              <label class="mb-1.5 block text-xs font-medium text-muted-foreground">{{ t('productMappings.import.selectConnection') }}</label>
               <Select v-model="importForm.connection_id">
                 <SelectTrigger class="h-9 w-full">
-                  <SelectValue placeholder="选择连接" />
+                  <SelectValue :placeholder="t('productMappings.import.selectConnectionPlaceholder')" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem v-for="conn in connections" :key="conn.id" :value="String(conn.id)">{{ conn.name }}</SelectItem>
@@ -328,10 +328,10 @@ onMounted(() => {
             </div>
 
             <div>
-              <label class="mb-1.5 block text-xs font-medium text-muted-foreground">上游商品</label>
+              <label class="mb-1.5 block text-xs font-medium text-muted-foreground">{{ t('productMappings.import.upstreamProduct') }}</label>
               <Select v-model="importForm.upstream_product_id" :disabled="!importForm.connection_id || loadingUpstream">
                 <SelectTrigger class="h-9 w-full">
-                  <SelectValue :placeholder="loadingUpstream ? '加载中...' : '选择上游商品'" />
+                  <SelectValue :placeholder="loadingUpstream ? t('productMappings.import.upstreamProductLoading') : t('productMappings.import.upstreamProductPlaceholder')" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem v-for="product in upstreamProducts" :key="product.id" :value="String(product.id)">
@@ -342,19 +342,19 @@ onMounted(() => {
             </div>
 
             <div>
-              <label class="mb-1.5 block text-xs font-medium text-muted-foreground">本地分类 ID（可选）</label>
-              <Input v-model="importForm.category_id" type="number" placeholder="分类 ID" />
+              <label class="mb-1.5 block text-xs font-medium text-muted-foreground">{{ t('productMappings.import.categoryId') }}</label>
+              <Input v-model="importForm.category_id" type="number" :placeholder="t('productMappings.import.categoryIdPlaceholder')" />
             </div>
 
             <div>
-              <label class="mb-1.5 block text-xs font-medium text-muted-foreground">Slug（可选）</label>
-              <Input v-model="importForm.slug" placeholder="product-slug" />
+              <label class="mb-1.5 block text-xs font-medium text-muted-foreground">{{ t('productMappings.import.slug') }}</label>
+              <Input v-model="importForm.slug" :placeholder="t('productMappings.import.slugPlaceholder')" />
             </div>
           </div>
 
           <div class="flex justify-end gap-3 border-t border-border pt-6">
             <Button type="button" variant="outline" @click="closeImportModal">{{ t('admin.common.cancel') }}</Button>
-            <Button type="submit" :disabled="!importForm.connection_id || !importForm.upstream_product_id">导入</Button>
+            <Button type="submit" :disabled="!importForm.connection_id || !importForm.upstream_product_id">{{ t('productMappings.import.submit') }}</Button>
           </div>
         </form>
       </DialogScrollContent>
