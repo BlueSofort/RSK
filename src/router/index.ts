@@ -120,6 +120,17 @@ const routes = [
         meta: { permission: 'GET:/admin/settings' },
       },
       {
+        path: 'security',
+        name: 'security',
+        component: () => import('@/views/admin/Security.vue'),
+      },
+      {
+        path: 'affiliates/settings',
+        name: 'affiliates-settings',
+        component: () => import('@/views/admin/AffiliateSettings.vue'),
+        meta: { permission: 'GET:/admin/settings/affiliate' },
+      },
+      {
         path: 'affiliates/users',
         name: 'affiliates-users',
         component: () => import('@/views/admin/AffiliateUsers.vue'),

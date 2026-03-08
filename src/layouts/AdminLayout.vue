@@ -34,6 +34,7 @@ import {
   Link,
   Truck,
   ClipboardCheck,
+  Lock,
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -223,6 +224,12 @@ const navGroups = computed<NavGroup[]>(() => {
       icon: BadgePercent,
       items: [
         {
+          label: t('admin.navItems.affiliatesSettings'),
+          to: '/affiliates/settings',
+          icon: SlidersHorizontal,
+          permission: 'GET:/admin/settings/affiliate',
+        },
+        {
           label: t('admin.navItems.affiliatesUsers'),
           to: '/affiliates/users',
           icon: Users,
@@ -301,6 +308,11 @@ const navGroups = computed<NavGroup[]>(() => {
           to: '/authz-audit-logs',
           icon: ScrollText,
           permission: 'GET:/admin/authz/audit-logs',
+        },
+        {
+          label: t('admin.navItems.security'),
+          to: '/security',
+          icon: Lock,
         },
       ],
     },

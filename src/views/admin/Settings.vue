@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { notifyError, notifySuccess } from '@/utils/notify'
-import { confirmAction } from '@/utils/confirm'
 
 const { t } = useI18n()
 const loading = ref(false)
@@ -23,6 +22,15 @@ type SiteScriptItem = {
 }
 
 const siteScriptsMaxCount = 20
+const footerLinksMaxCount = 20
+type FooterLinkItem = {
+  name: string
+  url: string
+}
+const createFooterLinkItem = (): FooterLinkItem => ({
+  name: '',
+  url: '',
+})
 const currentLang = ref<SupportedLanguage>('zh-CN')
 const currentTab = ref('basic')
 
@@ -34,7 +42,6 @@ const languages = computed(() => [
 
 const tabs = computed(() => [
   { label: t('admin.settings.tabs.basic'), value: 'basic' },
-  { label: t('admin.settings.tabs.scripts'), value: 'scripts' },
   { label: t('admin.settings.tabs.about'), value: 'about' },
   { label: t('admin.settings.tabs.legal'), value: 'legal' },
   { label: t('admin.settings.tabs.smtp'), value: 'smtp' },
@@ -42,8 +49,6 @@ const tabs = computed(() => [
   { label: t('admin.settings.tabs.telegram'), value: 'telegram' },
   { label: t('admin.settings.tabs.notification'), value: 'notification' },
   { label: t('admin.settings.tabs.dashboard'), value: 'dashboard' },
-  { label: t('admin.settings.tabs.affiliate'), value: 'affiliate' },
-  { label: t('admin.settings.tabs.security'), value: 'security' },
 ])
 
 const fallbackCurrencyOptions = [
@@ -111,6 +116,21 @@ const normalizeSiteScripts = (raw: unknown): SiteScriptItem[] => {
     .slice(0, siteScriptsMaxCount)
 }
 
+const normalizeFooterLinks = (raw: unknown): FooterLinkItem[] => {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null
+      const value = item as Record<string, unknown>
+      return {
+        name: typeof value.name === 'string' ? value.name : '',
+        url: typeof value.url === 'string' ? value.url : '',
+      } as FooterLinkItem
+    })
+    .filter((item): item is FooterLinkItem => !!item && item.name.trim() !== '')
+    .slice(0, footerLinksMaxCount)
+}
+
 const normalizeLocalizedField = (raw: any): Record<SupportedLanguage, string> => {
   const normalized = createLocalizedField()
   if (!raw || typeof raw !== 'object') {
@@ -161,6 +181,7 @@ const form = reactive({
     privacy: createLocalizedField(),
   },
   scripts: [] as SiteScriptItem[],
+  footer_links: [] as FooterLinkItem[],
 })
 
 const smtpForm = reactive({
@@ -259,20 +280,6 @@ const dashboardForm = reactive({
   },
 })
 
-const affiliateForm = reactive({
-  enabled: false,
-  commission_rate: 0,
-  confirm_days: 0,
-  min_withdraw_amount: 0,
-  withdraw_channels_text: '',
-})
-
-const passwordForm = reactive({
-  old: '',
-  new: '',
-  confirm: '',
-})
-
 const getCurrentLangName = () => {
   return languages.value.find((item) => item.code === currentLang.value)?.name || t('admin.common.lang.zhCN')
 }
@@ -292,21 +299,6 @@ const splitRecipients = (raw: string) => {
 }
 
 const joinRecipients = (items: unknown) => {
-  if (!Array.isArray(items)) return ''
-  return items
-    .map((item) => String(item || '').trim())
-    .filter((item) => item !== '')
-    .join('\n')
-}
-
-const splitChannels = (raw: string) => {
-  return raw
-    .split(/\r?\n|,/)
-    .map((item) => item.trim())
-    .filter((item) => item !== '')
-}
-
-const joinChannels = (items: unknown) => {
   if (!Array.isArray(items)) return ''
   return items
     .map((item) => String(item || '').trim())
@@ -344,14 +336,13 @@ const notifyErrorIfNeeded = (err: unknown, fallback: string) => {
 const fetchSettings = async () => {
   loading.value = true
   try {
-    const [siteRes, smtpRes, captchaRes, telegramRes, notificationRes, dashboardRes, affiliateRes] = await Promise.all([
+    const [siteRes, smtpRes, captchaRes, telegramRes, notificationRes, dashboardRes] = await Promise.all([
       adminAPI.getSettings({ key: 'site_config' }),
       adminAPI.getSMTPSettings(),
       adminAPI.getCaptchaSettings(),
       adminAPI.getTelegramAuthSettings(),
       adminAPI.getNotificationCenterSettings(),
       adminAPI.getSettings({ key: 'dashboard_config' }),
-      adminAPI.getAffiliateSettings(),
     ])
 
     if (siteRes.data && siteRes.data.data) {
@@ -409,6 +400,9 @@ const fetchSettings = async () => {
 
       const scripts = normalizeSiteScripts(data.scripts)
       form.scripts.splice(0, form.scripts.length, ...scripts)
+
+      const footerLinks = normalizeFooterLinks(data.footer_links)
+      form.footer_links.splice(0, form.footer_links.length, ...footerLinks)
     }
 
     if (smtpRes.data && smtpRes.data.data) {
@@ -495,14 +489,6 @@ const fetchSettings = async () => {
       dashboardForm.ranking.top_channels_limit = clampNumber(dashboard.ranking?.top_channels_limit, 1, 20, 5)
     }
 
-    if (affiliateRes.data && affiliateRes.data.data) {
-      const affiliate = affiliateRes.data.data as any
-      affiliateForm.enabled = Boolean(affiliate.enabled)
-      affiliateForm.commission_rate = clampNumber(affiliate.commission_rate, 0, 100, 0)
-      affiliateForm.confirm_days = clampNumber(affiliate.confirm_days, 0, 3650, 0)
-      affiliateForm.min_withdraw_amount = Math.max(normalizeNumber(affiliate.min_withdraw_amount, 0), 0)
-      affiliateForm.withdraw_channels_text = joinChannels(affiliate.withdraw_channels)
-    }
   } catch (err) {
     notifyErrorIfNeeded(err, t('admin.settings.alerts.saveFailed'))
   } finally {
@@ -521,6 +507,7 @@ const saveSiteSettings = async () => {
       about: form.about,
       legal: form.legal,
       scripts: form.scripts,
+      footer_links: form.footer_links,
     },
   }
   await adminAPI.updateSettings(payload)
@@ -548,6 +535,18 @@ const addSiteScriptItem = () => {
 
 const removeSiteScriptItem = (index: number) => {
   form.scripts.splice(index, 1)
+}
+
+const addFooterLinkItem = () => {
+  if (form.footer_links.length >= footerLinksMaxCount) {
+    notifyError(t('admin.settings.footerLinks.maxHint', { max: footerLinksMaxCount }))
+    return
+  }
+  form.footer_links.push(createFooterLinkItem())
+}
+
+const removeFooterLinkItem = (index: number) => {
+  form.footer_links.splice(index, 1)
 }
 
 const saveSMTPSettings = async () => {
@@ -684,25 +683,6 @@ const saveDashboardSettings = async () => {
   await adminAPI.updateSettings(payload)
 }
 
-const saveAffiliateSettings = async () => {
-  const payload = {
-    enabled: affiliateForm.enabled,
-    commission_rate: clampNumber(affiliateForm.commission_rate, 0, 100, 0),
-    confirm_days: clampNumber(affiliateForm.confirm_days, 0, 3650, 0),
-    min_withdraw_amount: Math.max(normalizeNumber(affiliateForm.min_withdraw_amount, 0), 0),
-    withdraw_channels: splitChannels(affiliateForm.withdraw_channels_text),
-  }
-  const response = await adminAPI.updateAffiliateSettings(payload)
-  const data = response.data?.data as any
-  if (data) {
-    affiliateForm.enabled = Boolean(data.enabled)
-    affiliateForm.commission_rate = clampNumber(data.commission_rate, 0, 100, payload.commission_rate)
-    affiliateForm.confirm_days = clampNumber(data.confirm_days, 0, 3650, payload.confirm_days)
-    affiliateForm.min_withdraw_amount = Math.max(normalizeNumber(data.min_withdraw_amount, payload.min_withdraw_amount), 0)
-    affiliateForm.withdraw_channels_text = joinChannels(data.withdraw_channels)
-  }
-}
-
 const saveSettings = async () => {
   loading.value = true
   try {
@@ -716,8 +696,6 @@ const saveSettings = async () => {
       await saveNotificationCenterSettings()
     } else if (currentTab.value === 'dashboard') {
       await saveDashboardSettings()
-    } else if (currentTab.value === 'affiliate') {
-      await saveAffiliateSettings()
     } else {
       await saveSiteSettings()
     }
@@ -742,36 +720,6 @@ const testSMTPSettings = async () => {
     notifyErrorIfNeeded(err, t('admin.settings.smtp.testFailed'))
   } finally {
     smtpTesting.value = false
-  }
-}
-
-const changePassword = async () => {
-  if (!passwordForm.old || !passwordForm.new || !passwordForm.confirm) {
-    notifyError(t('admin.settings.alerts.passwordRequired'))
-    return
-  }
-  if (passwordForm.new !== passwordForm.confirm) {
-    notifyError(t('admin.settings.alerts.passwordMismatch'))
-    return
-  }
-
-  const confirmed = await confirmAction(t('admin.settings.alerts.confirmChangePassword'))
-  if (!confirmed) return
-
-  loading.value = true
-  try {
-    await adminAPI.updatePassword({
-      old_password: passwordForm.old,
-      new_password: passwordForm.new,
-    })
-    notifySuccess(t('admin.settings.alerts.passwordSuccess'))
-    localStorage.removeItem('admin_token')
-    const adminPath = import.meta.env.VITE_ADMIN_PATH || ''
-    window.location.href = `${adminPath}/login`
-  } catch (err: any) {
-    notifyErrorIfNeeded(err, t('admin.settings.alerts.passwordFailed'))
-  } finally {
-    loading.value = false
   }
 }
 
@@ -881,9 +829,34 @@ onMounted(() => {
           </div>
         </div>
       </div>
-    </div>
 
-    <div v-show="currentTab === 'scripts'" class="space-y-6">
+      <div class="rounded-xl border border-border bg-card">
+        <div class="flex items-center justify-between border-b border-border bg-muted/40 px-6 py-4">
+          <div>
+            <h2 class="text-lg font-semibold">{{ t('admin.settings.footerLinks.title') }}</h2>
+            <p class="mt-1 text-xs text-muted-foreground">{{ t('admin.settings.footerLinks.subtitle') }}</p>
+          </div>
+          <Button type="button" size="sm" variant="outline" @click="addFooterLinkItem">
+            {{ t('admin.settings.footerLinks.add') }}
+          </Button>
+        </div>
+        <div class="space-y-4 p-6">
+          <div v-if="form.footer_links.length === 0" class="rounded-lg border border-dashed border-border bg-muted/10 px-3 py-6 text-center text-xs text-muted-foreground">
+            {{ t('admin.settings.footerLinks.empty') }}
+          </div>
+
+          <div v-for="(link, index) in form.footer_links" :key="`footer-link-${index}`" class="flex items-center gap-3">
+            <div class="grid flex-1 grid-cols-1 gap-3 md:grid-cols-2">
+              <Input v-model="link.name" :placeholder="t('admin.settings.footerLinks.namePlaceholder')" />
+              <Input v-model="link.url" :placeholder="t('admin.settings.footerLinks.urlPlaceholder')" />
+            </div>
+            <Button type="button" size="sm" variant="destructive" @click="removeFooterLinkItem(index)">
+              {{ t('admin.common.delete') }}
+            </Button>
+          </div>
+        </div>
+      </div>
+
       <div class="rounded-xl border border-border bg-card">
         <div class="flex items-center justify-between border-b border-border bg-muted/40 px-6 py-4">
           <div>
@@ -1486,77 +1459,5 @@ onMounted(() => {
       </div>
     </div>
 
-    <div v-show="currentTab === 'affiliate'" class="space-y-6">
-      <div class="rounded-xl border border-border bg-card">
-        <div class="border-b border-border bg-muted/40 px-6 py-4">
-          <h2 class="text-lg font-semibold">{{ t('admin.settings.affiliate.title') }}</h2>
-          <p class="mt-1 text-xs text-muted-foreground">{{ t('admin.settings.affiliate.subtitle') }}</p>
-        </div>
-        <div class="space-y-6 p-6">
-          <div class="flex items-center gap-3 rounded-lg border border-border bg-muted/20 px-4 py-3">
-            <input id="affiliate-enabled" v-model="affiliateForm.enabled" type="checkbox" class="h-4 w-4 accent-primary" />
-            <label for="affiliate-enabled" class="text-sm font-medium">{{ t('admin.settings.affiliate.enabled') }}</label>
-          </div>
-
-          <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
-            <div class="space-y-2">
-              <label class="text-xs font-medium text-muted-foreground">{{ t('admin.settings.affiliate.commissionRate') }}</label>
-              <Input v-model.number="affiliateForm.commission_rate" type="number" min="0" max="100" step="0.01" />
-              <p class="text-xs text-muted-foreground">{{ t('admin.settings.affiliate.commissionRateHint') }}</p>
-            </div>
-            <div class="space-y-2">
-              <label class="text-xs font-medium text-muted-foreground">{{ t('admin.settings.affiliate.confirmDays') }}</label>
-              <Input v-model.number="affiliateForm.confirm_days" type="number" min="0" max="3650" step="1" />
-              <p class="text-xs text-muted-foreground">{{ t('admin.settings.affiliate.confirmDaysHint') }}</p>
-            </div>
-            <div class="space-y-2">
-              <label class="text-xs font-medium text-muted-foreground">{{ t('admin.settings.affiliate.minWithdrawAmount') }}</label>
-              <Input v-model.number="affiliateForm.min_withdraw_amount" type="number" min="0" step="0.01" />
-              <p class="text-xs text-muted-foreground">{{ t('admin.settings.affiliate.minWithdrawAmountHint') }}</p>
-            </div>
-          </div>
-
-          <div class="space-y-2">
-            <label class="text-xs font-medium text-muted-foreground">{{ t('admin.settings.affiliate.withdrawChannels') }}</label>
-            <Textarea
-              v-model="affiliateForm.withdraw_channels_text"
-              rows="5"
-              :placeholder="t('admin.settings.affiliate.withdrawChannelsPlaceholder')"
-            />
-            <p class="text-xs text-muted-foreground">{{ t('admin.settings.affiliate.withdrawChannelsHint') }}</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div v-show="currentTab === 'security'" class="space-y-6">
-      <div class="rounded-xl border border-border bg-card">
-        <div class="border-b border-border bg-muted/40 px-6 py-4">
-          <h2 class="text-lg font-semibold">{{ t('admin.settings.security.title') }}</h2>
-          <p class="mt-1 text-xs text-muted-foreground">{{ t('admin.settings.security.subtitle') }}</p>
-        </div>
-        <div class="space-y-6 p-6">
-          <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <div class="space-y-2">
-              <label class="text-xs font-medium text-muted-foreground">{{ t('admin.settings.security.currentPassword') }}</label>
-              <Input v-model="passwordForm.old" type="password" :placeholder="t('admin.settings.security.currentPasswordPlaceholder')" />
-            </div>
-            <div class="grid grid-cols-1 gap-6 md:col-span-2 md:grid-cols-2">
-              <div class="space-y-2">
-                <label class="text-xs font-medium text-muted-foreground">{{ t('admin.settings.security.newPassword') }}</label>
-                <Input v-model="passwordForm.new" type="password" :placeholder="t('admin.settings.security.newPasswordPlaceholder')" />
-              </div>
-              <div class="space-y-2">
-                <label class="text-xs font-medium text-muted-foreground">{{ t('admin.settings.security.confirmPassword') }}</label>
-                <Input v-model="passwordForm.confirm" type="password" :placeholder="t('admin.settings.security.confirmPasswordPlaceholder')" />
-              </div>
-            </div>
-          </div>
-          <div class="flex justify-end">
-            <Button variant="secondary" @click="changePassword">{{ t('admin.settings.actions.changePassword') }}</Button>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
