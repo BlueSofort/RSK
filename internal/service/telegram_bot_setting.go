@@ -17,6 +17,7 @@ type TelegramBotConfigSetting struct {
 	ConfigVersion int                      `json:"config_version"`
 	Basic         TelegramBotBasicConfig   `json:"basic"`
 	Welcome       TelegramBotWelcomeConfig `json:"welcome"`
+	Help          TelegramBotHelpConfig    `json:"help"`
 	Menu          TelegramBotMenuConfig    `json:"menu"`
 }
 
@@ -32,6 +33,27 @@ type TelegramBotBasicConfig struct {
 type TelegramBotWelcomeConfig struct {
 	Enabled bool          `json:"enabled"`
 	Message LocalizedText `json:"message"`
+}
+
+// TelegramBotHelpConfig 帮助中心配置分组
+type TelegramBotHelpConfig struct {
+	Enabled     bool                  `json:"enabled"`
+	Title       LocalizedText         `json:"title"`
+	Intro       LocalizedText         `json:"intro"`
+	CenterHint  LocalizedText         `json:"center_hint"`
+	SupportHint LocalizedText         `json:"support_hint"`
+	Items       []TelegramBotHelpItem `json:"items"`
+}
+
+// TelegramBotHelpItem 单个帮助中心条目
+type TelegramBotHelpItem struct {
+	Key             string        `json:"key"`
+	Enabled         bool          `json:"enabled"`
+	Order           int           `json:"order"`
+	Summary         LocalizedText `json:"summary"`
+	Title           LocalizedText `json:"title"`
+	Content         LocalizedText `json:"content"`
+	ShowSupportLink bool          `json:"show_support_link"`
 }
 
 // TelegramBotMenuConfig 菜单配置分组
@@ -81,6 +103,80 @@ func TelegramBotConfigDefault() TelegramBotConfigSetting {
 			Enabled: false,
 			Message: make(LocalizedText),
 		},
+		Help: TelegramBotHelpConfig{
+			Enabled: true,
+			Title: LocalizedText{
+				"zh-CN": "❓ 帮助中心",
+				"zh-TW": "❓ 幫助中心",
+				"en-US": "❓ Help Center",
+			},
+			Intro: LocalizedText{
+				"zh-CN": "这里整理了下单、订单、钱包和客服入口，先点最接近你问题的按钮。",
+				"zh-TW": "這裡整理了下單、訂單、錢包與客服入口，先點最接近你問題的按鈕。",
+				"en-US": "Quick answers for shopping, orders, wallet, and support are listed here. Start with the closest topic.",
+			},
+			CenterHint: LocalizedText{
+				"zh-CN": "如果还是没解决，再进入客服入口即可。",
+				"zh-TW": "如果還是沒解決，再進入客服入口即可。",
+				"en-US": "If the issue remains, open the support topic from below.",
+			},
+			SupportHint: LocalizedText{
+				"zh-CN": "当前还没有配置客服链接，你可以先查看上面的常见问题，或稍后再试。",
+				"zh-TW": "目前還沒有配置客服連結，你可以先查看上面的常見問題，或稍後再試。",
+				"en-US": "The support link is not configured yet. You can review the common topics above or try again later.",
+			},
+			Items: []TelegramBotHelpItem{
+				{
+					Key:     "shop",
+					Enabled: true,
+					Order:   1,
+					Summary: LocalizedText{"zh-CN": "🛍️ 怎么下单", "zh-TW": "🛍️ 怎麼下單", "en-US": "🛍️ How to buy"},
+					Title:   LocalizedText{"zh-CN": "🛍️ 怎么下单", "zh-TW": "🛍️ 怎麼下單", "en-US": "🛍️ How to buy"},
+					Content: LocalizedText{
+						"zh-CN": "先点“开始购物”，进入分类后选择商品与规格，再确认数量并完成支付。支付成功后，订单会自动进入处理流程。",
+						"zh-TW": "先點「開始購物」，進入分類後選擇商品與規格，再確認數量並完成付款。付款成功後，訂單會自動進入處理流程。",
+						"en-US": "Tap \"Shop Now\", choose a category, pick the product and spec, confirm quantity, then finish payment. Your order enters processing right after payment succeeds.",
+					},
+				},
+				{
+					Key:     "orders",
+					Enabled: true,
+					Order:   2,
+					Summary: LocalizedText{"zh-CN": "📦 订单问题", "zh-TW": "📦 訂單問題", "en-US": "📦 Order issues"},
+					Title:   LocalizedText{"zh-CN": "📦 订单问题", "zh-TW": "📦 訂單問題", "en-US": "📦 Order issues"},
+					Content: LocalizedText{
+						"zh-CN": "在“我的订单”里可以查看状态、支付结果与发货内容。若支付完成但暂时没发货，先刷新订单状态；仍有问题再联系人工客服。",
+						"zh-TW": "在「我的訂單」裡可以查看狀態、付款結果與發貨內容。若付款完成但暫時沒發貨，先刷新訂單狀態；仍有問題再聯繫人工客服。",
+						"en-US": "Use \"My Orders\" to review status, payment result, and delivery content. If payment is done but delivery is pending, refresh the order status first and contact support if it still looks wrong.",
+					},
+				},
+				{
+					Key:     "wallet",
+					Enabled: true,
+					Order:   3,
+					Summary: LocalizedText{"zh-CN": "💰 钱包充值", "zh-TW": "💰 錢包儲值", "en-US": "💰 Wallet help"},
+					Title:   LocalizedText{"zh-CN": "💰 钱包充值", "zh-TW": "💰 錢包儲值", "en-US": "💰 Wallet help"},
+					Content: LocalizedText{
+						"zh-CN": "打开“我的钱包”可以查看余额、充值记录并发起充值。充值成功后，余额会更新，可直接用于支付订单。",
+						"zh-TW": "打開「我的錢包」可以查看餘額、儲值記錄並發起儲值。儲值成功後，餘額會更新，可直接用於支付訂單。",
+						"en-US": "Open \"My Wallet\" to view balance, recharge history, and create a recharge. Once the recharge succeeds, the balance updates and can be used for orders.",
+					},
+				},
+				{
+					Key:             "support",
+					Enabled:         true,
+					Order:           4,
+					ShowSupportLink: true,
+					Summary:         LocalizedText{"zh-CN": "💬 联系客服", "zh-TW": "💬 聯繫客服", "en-US": "💬 Contact support"},
+					Title:           LocalizedText{"zh-CN": "💬 联系客服", "zh-TW": "💬 聯繫客服", "en-US": "💬 Contact support"},
+					Content: LocalizedText{
+						"zh-CN": "如果上面的自助说明仍然无法解决问题，请通过下方客服入口联系人工，并尽量附上订单号、商品名和问题截图。",
+						"zh-TW": "如果上面的自助說明仍然無法解決問題，請透過下方客服入口聯繫人工，並盡量附上訂單號、商品名與問題截圖。",
+						"en-US": "If the self-service guides above do not solve the issue, contact support using the link below and include your order number, product name, and screenshots when possible.",
+					},
+				},
+			},
+		},
 		Menu: TelegramBotMenuConfig{
 			Items: []TelegramBotMenuItem{
 				{
@@ -128,6 +224,14 @@ func TelegramBotConfigToMap(setting TelegramBotConfigSetting) map[string]interfa
 			"enabled": setting.Welcome.Enabled,
 			"message": localizedTextToMap(setting.Welcome.Message),
 		},
+		"help": map[string]interface{}{
+			"enabled":      setting.Help.Enabled,
+			"title":        localizedTextToMap(setting.Help.Title),
+			"intro":        localizedTextToMap(setting.Help.Intro),
+			"center_hint":  localizedTextToMap(setting.Help.CenterHint),
+			"support_hint": localizedTextToMap(setting.Help.SupportHint),
+			"items":        helpItemsToSlice(setting.Help.Items),
+		},
 		"menu": map[string]interface{}{
 			"items": menuItemsToSlice(setting.Menu.Items),
 		},
@@ -149,6 +253,14 @@ func MaskTelegramBotConfigForAdmin(setting TelegramBotConfigSetting) models.JSON
 		"welcome": map[string]interface{}{
 			"enabled": setting.Welcome.Enabled,
 			"message": localizedTextToMap(setting.Welcome.Message),
+		},
+		"help": map[string]interface{}{
+			"enabled":      setting.Help.Enabled,
+			"title":        localizedTextToMap(setting.Help.Title),
+			"intro":        localizedTextToMap(setting.Help.Intro),
+			"center_hint":  localizedTextToMap(setting.Help.CenterHint),
+			"support_hint": localizedTextToMap(setting.Help.SupportHint),
+			"items":        helpItemsToSlice(setting.Help.Items),
 		},
 		"menu": map[string]interface{}{
 			"items": menuItemsToSlice(setting.Menu.Items),
@@ -172,6 +284,14 @@ func SerializeTelegramBotConfigForChannel(setting TelegramBotConfigSetting, botT
 		"welcome": map[string]interface{}{
 			"enabled": setting.Welcome.Enabled,
 			"message": localizedTextToMap(setting.Welcome.Message),
+		},
+		"help": map[string]interface{}{
+			"enabled":      setting.Help.Enabled,
+			"title":        localizedTextToMap(setting.Help.Title),
+			"intro":        localizedTextToMap(setting.Help.Intro),
+			"center_hint":  localizedTextToMap(setting.Help.CenterHint),
+			"support_hint": localizedTextToMap(setting.Help.SupportHint),
+			"items":        helpItemsToSlice(setting.Help.Items),
 		},
 		"menu": map[string]interface{}{
 			"items": menuItemsToSlice(setting.Menu.Items),
@@ -234,6 +354,15 @@ func telegramBotConfigFromJSON(raw models.JSON, fallback TelegramBotConfigSettin
 		next.Welcome.Message = readLocalizedText(welcomeRaw, "message", next.Welcome.Message)
 	}
 
+	if helpRaw, ok := raw["help"].(map[string]interface{}); ok {
+		next.Help.Enabled = readBool(helpRaw, "enabled", next.Help.Enabled)
+		next.Help.Title = readLocalizedText(helpRaw, "title", next.Help.Title)
+		next.Help.Intro = readLocalizedText(helpRaw, "intro", next.Help.Intro)
+		next.Help.CenterHint = readLocalizedText(helpRaw, "center_hint", next.Help.CenterHint)
+		next.Help.SupportHint = readLocalizedText(helpRaw, "support_hint", next.Help.SupportHint)
+		next.Help.Items = readHelpItems(helpRaw["items"], next.Help.Items)
+	}
+
 	if menuRaw, ok := raw["menu"].(map[string]interface{}); ok {
 		next.Menu.Items = readMenuItems(menuRaw["items"])
 	}
@@ -289,6 +418,11 @@ func normalizeTelegramBotConfig(raw models.JSON) map[string]interface{} {
 	// 归一化多语言字段：确保所有支持的语言键都存在
 	setting.Basic.Description = normalizeLocalizedText(setting.Basic.Description)
 	setting.Welcome.Message = normalizeLocalizedText(setting.Welcome.Message)
+	setting.Help.Title = normalizeLocalizedText(setting.Help.Title)
+	setting.Help.Intro = normalizeLocalizedText(setting.Help.Intro)
+	setting.Help.CenterHint = normalizeLocalizedText(setting.Help.CenterHint)
+	setting.Help.SupportHint = normalizeLocalizedText(setting.Help.SupportHint)
+	setting.Help.Items = normalizeHelpItems(setting.Help.Items)
 	setting.Menu.Items = normalizeMenuItems(setting.Menu.Items)
 	return TelegramBotConfigToMap(setting)
 }
@@ -320,6 +454,11 @@ func (s *SettingService) UpdateTelegramBotConfig(cfg TelegramBotConfigSetting) (
 	// 归一化多语言字段
 	cfg.Basic.Description = normalizeLocalizedText(cfg.Basic.Description)
 	cfg.Welcome.Message = normalizeLocalizedText(cfg.Welcome.Message)
+	cfg.Help.Title = normalizeLocalizedText(cfg.Help.Title)
+	cfg.Help.Intro = normalizeLocalizedText(cfg.Help.Intro)
+	cfg.Help.CenterHint = normalizeLocalizedText(cfg.Help.CenterHint)
+	cfg.Help.SupportHint = normalizeLocalizedText(cfg.Help.SupportHint)
+	cfg.Help.Items = normalizeHelpItems(cfg.Help.Items)
 	cfg.Menu.Items = normalizeMenuItems(cfg.Menu.Items)
 
 	if _, err := s.Update(constants.SettingKeyTelegramBotConfig, TelegramBotConfigToMap(cfg)); err != nil {
@@ -363,7 +502,53 @@ var validMenuActionTypes = map[string]bool{
 	"command": true,
 }
 
+const helpItemsMaxCount = 12
 const menuItemsMaxCount = 20
+
+// readHelpItems 从 JSON 解析帮助中心条目数组
+func readHelpItems(raw interface{}, fallback []TelegramBotHelpItem) []TelegramBotHelpItem {
+	arr, ok := raw.([]interface{})
+	if !ok {
+		return fallback
+	}
+	if len(arr) == 0 {
+		return []TelegramBotHelpItem{}
+	}
+	items := make([]TelegramBotHelpItem, 0, len(arr))
+	for _, v := range arr {
+		m, ok := v.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		items = append(items, TelegramBotHelpItem{
+			Key:             readString(m, "key", ""),
+			Enabled:         readBool(m, "enabled", true),
+			Order:           readInt(m, "order", 0),
+			Summary:         readLocalizedText(m, "summary", make(LocalizedText)),
+			Title:           readLocalizedText(m, "title", make(LocalizedText)),
+			Content:         readLocalizedText(m, "content", make(LocalizedText)),
+			ShowSupportLink: readBool(m, "show_support_link", false),
+		})
+	}
+	return items
+}
+
+// helpItemsToSlice 序列化帮助中心条目为存储格式
+func helpItemsToSlice(items []TelegramBotHelpItem) []interface{} {
+	result := make([]interface{}, 0, len(items))
+	for _, item := range items {
+		result = append(result, map[string]interface{}{
+			"key":               strings.TrimSpace(item.Key),
+			"enabled":           item.Enabled,
+			"order":             item.Order,
+			"summary":           localizedTextToMap(item.Summary),
+			"title":             localizedTextToMap(item.Title),
+			"content":           localizedTextToMap(item.Content),
+			"show_support_link": item.ShowSupportLink,
+		})
+	}
+	return result
+}
 
 // readMenuItems 从 JSON 解析菜单项数组
 func readMenuItems(raw interface{}) []TelegramBotMenuItem {
@@ -406,6 +591,22 @@ func menuItemsToSlice(items []TelegramBotMenuItem) []interface{} {
 				"value": strings.TrimSpace(item.Action.Value),
 			},
 		})
+	}
+	return result
+}
+
+// normalizeHelpItems 归一化帮助中心条目：trim、多语言归一化、上限 12 项
+func normalizeHelpItems(items []TelegramBotHelpItem) []TelegramBotHelpItem {
+	if len(items) > helpItemsMaxCount {
+		items = items[:helpItemsMaxCount]
+	}
+	result := make([]TelegramBotHelpItem, 0, len(items))
+	for _, item := range items {
+		item.Key = strings.TrimSpace(item.Key)
+		item.Summary = normalizeLocalizedText(item.Summary)
+		item.Title = normalizeLocalizedText(item.Title)
+		item.Content = normalizeLocalizedText(item.Content)
+		result = append(result, item)
 	}
 	return result
 }

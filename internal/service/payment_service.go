@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 
@@ -674,21 +673,20 @@ func shouldUseGatewayOrderNo(channel *models.PaymentChannel) bool {
 	}
 }
 
-func buildGatewayOrderNo(payment *models.Payment) string {
-	if payment == nil || payment.ID == 0 {
-		return ""
-	}
-	return fmt.Sprintf("DJP%d", payment.ID)
+func buildGatewayOrderNo() string {
+	return generateSerialNo("DJP")
 }
 
 func resolveGatewayOrderNo(channel *models.PaymentChannel, payment *models.Payment) string {
 	if !shouldUseGatewayOrderNo(channel) {
 		return ""
 	}
-	if gatewayOrderNo := strings.TrimSpace(payment.GatewayOrderNo); gatewayOrderNo != "" {
-		return gatewayOrderNo
+	if payment != nil {
+		if gatewayOrderNo := strings.TrimSpace(payment.GatewayOrderNo); gatewayOrderNo != "" {
+			return gatewayOrderNo
+		}
 	}
-	return buildGatewayOrderNo(payment)
+	return buildGatewayOrderNo()
 }
 
 func resolveProviderOrderNo(businessOrderNo string, payment *models.Payment) string {

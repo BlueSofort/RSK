@@ -65,13 +65,35 @@ func TestResolveGatewayOrderNo(t *testing.T) {
 	channel := &models.PaymentChannel{ProviderType: constants.PaymentProviderEpusdt}
 	payment := &models.Payment{ID: 123}
 
-	if got := resolveGatewayOrderNo(channel, payment); got != "DJP123" {
-		t.Fatalf("resolveGatewayOrderNo() = %s, want DJP123", got)
+	gotFirst := resolveGatewayOrderNo(channel, payment)
+	if gotFirst == "" {
+		t.Fatalf("resolveGatewayOrderNo() should generate gateway order no")
+	}
+	if gotFirst == "DJP123" {
+		t.Fatalf("resolveGatewayOrderNo() should not leak payment id, got %s", gotFirst)
+	}
+	if !strings.HasPrefix(gotFirst, "DJP") {
+		t.Fatalf("resolveGatewayOrderNo() should keep DJP prefix, got %s", gotFirst)
 	}
 
 	payment.GatewayOrderNo = "CUSTOM-1"
 	if got := resolveGatewayOrderNo(channel, payment); got != "CUSTOM-1" {
 		t.Fatalf("resolveGatewayOrderNo() should reuse stored value, got %s", got)
+	}
+	payment.GatewayOrderNo = ""
+
+	gotFallback := resolveGatewayOrderNo(channel, payment)
+	if gotFallback == "" {
+		t.Fatalf("resolveGatewayOrderNo() fallback should not be empty")
+	}
+	if gotFallback == "DJP123" {
+		t.Fatalf("resolveGatewayOrderNo() fallback should not leak payment id, got %s", gotFallback)
+	}
+	if !strings.HasPrefix(gotFallback, "DJP") {
+		t.Fatalf("resolveGatewayOrderNo() fallback should keep DJP prefix, got %s", gotFallback)
+	}
+	if gotFallback == gotFirst {
+		t.Fatalf("resolveGatewayOrderNo() should generate new gateway order no for a new payment attempt")
 	}
 
 	official := &models.PaymentChannel{ProviderType: constants.PaymentProviderOfficial}
@@ -161,9 +183,14 @@ func TestApplyProviderPaymentUsesGatewayOrderNoForEpusdt(t *testing.T) {
 		t.Fatalf("applyProviderPayment failed: %v", err)
 	}
 
-	wantGatewayOrderNo := buildGatewayOrderNo(payment)
-	if payment.GatewayOrderNo != wantGatewayOrderNo {
-		t.Fatalf("payment gateway order no = %s, want %s", payment.GatewayOrderNo, wantGatewayOrderNo)
+	if payment.GatewayOrderNo == "" {
+		t.Fatalf("payment gateway order no should not be empty")
+	}
+	if payment.GatewayOrderNo == order.OrderNo {
+		t.Fatalf("payment gateway order no should differ from business order no, got %s", payment.GatewayOrderNo)
+	}
+	if !strings.HasPrefix(payment.GatewayOrderNo, "DJP") {
+		t.Fatalf("payment gateway order no should keep DJP prefix, got %s", payment.GatewayOrderNo)
 	}
 	if gotOrderID != payment.GatewayOrderNo {
 		t.Fatalf("epusdt order_id = %s, want %s", gotOrderID, payment.GatewayOrderNo)
