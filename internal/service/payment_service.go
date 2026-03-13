@@ -275,6 +275,7 @@ func (s *PaymentService) CreatePayment(input CreatePaymentInput) (*CreatePayment
 				InteractionMode: constants.PaymentInteractionBalance,
 				Amount:          models.NewMoneyFromDecimal(walletPaidAmount),
 				FeeRate:         models.NewMoneyFromDecimal(decimal.Zero),
+				FixedFee:        models.NewMoneyFromDecimal(decimal.Zero),
 				FeeAmount:       models.NewMoneyFromDecimal(decimal.Zero),
 				Currency:        lockedOrder.Currency,
 				Status:          constants.PaymentStatusSuccess,
@@ -299,9 +300,14 @@ func (s *PaymentService) CreatePayment(input CreatePaymentInput) (*CreatePayment
 			return err
 		}
 
-		feeAmount := decimal.Zero
+		fixedFee := decimal.Zero
+		if channel.FixedFee.Decimal.GreaterThan(decimal.Zero) {
+			fixedFee = channel.FixedFee.Decimal.Round(2)
+		}
+
+		feeAmount := fixedFee
 		if feeRate.GreaterThan(decimal.Zero) {
-			feeAmount = onlineAmount.Mul(feeRate).Div(decimal.NewFromInt(100)).Round(2)
+			feeAmount = feeAmount.Add(onlineAmount.Mul(feeRate).Div(decimal.NewFromInt(100))).Round(2)
 		}
 		payableAmount := onlineAmount.Add(feeAmount).Round(2)
 		payment = &models.Payment{
@@ -312,6 +318,7 @@ func (s *PaymentService) CreatePayment(input CreatePaymentInput) (*CreatePayment
 			InteractionMode: channel.InteractionMode,
 			Amount:          models.NewMoneyFromDecimal(payableAmount),
 			FeeRate:         models.NewMoneyFromDecimal(feeRate),
+			FixedFee:        models.NewMoneyFromDecimal(fixedFee),
 			FeeAmount:       models.NewMoneyFromDecimal(feeAmount),
 			Currency:        lockedOrder.Currency,
 			Status:          constants.PaymentStatusInitiated,
@@ -468,9 +475,14 @@ func (s *PaymentService) CreateWalletRechargePayment(input CreateWalletRechargeP
 	if feeRate.LessThan(decimal.Zero) || feeRate.GreaterThan(decimal.NewFromInt(100)) {
 		return nil, ErrPaymentChannelConfigInvalid
 	}
-	feeAmount := decimal.Zero
+	fixedFee := channel.FixedFee.Decimal.Round(2)
+	if fixedFee.LessThan(decimal.Zero) || fixedFee.GreaterThanOrEqual(decimal.NewFromInt(10000)) {
+		return nil, ErrPaymentChannelConfigInvalid
+	}
+
+	feeAmount := fixedFee
 	if feeRate.GreaterThan(decimal.Zero) {
-		feeAmount = amount.Mul(feeRate).Div(decimal.NewFromInt(100)).Round(2)
+		feeAmount = feeAmount.Add(amount.Mul(feeRate).Div(decimal.NewFromInt(100))).Round(2)
 	}
 	payableAmount := amount.Add(feeAmount).Round(2)
 	currency := normalizeWalletCurrency(input.Currency)
@@ -495,6 +507,7 @@ func (s *PaymentService) CreateWalletRechargePayment(input CreateWalletRechargeP
 			InteractionMode: channel.InteractionMode,
 			Amount:          models.NewMoneyFromDecimal(payableAmount),
 			FeeRate:         models.NewMoneyFromDecimal(feeRate),
+			FixedFee:        models.NewMoneyFromDecimal(fixedFee),
 			FeeAmount:       models.NewMoneyFromDecimal(feeAmount),
 			Currency:        currency,
 			Status:          constants.PaymentStatusInitiated,
