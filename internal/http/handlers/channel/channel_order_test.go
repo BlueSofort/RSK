@@ -1,6 +1,7 @@
 package channel
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -177,5 +178,49 @@ func TestBuildChannelPaymentResponseIncludesOrderSummary(t *testing.T) {
 	}
 	if got := resp["paid_amount"]; got != "99.00" {
 		t.Fatalf("expected paid_amount=99.00, got=%v", got)
+	}
+}
+
+func TestPreviewOrderRequestBindsAffiliateFields(t *testing.T) {
+	raw := []byte(`{
+		"channel_user_id":"998877",
+		"telegram_user_id":"998877",
+		"items":[{"product_id":12,"sku_id":34,"quantity":1,"fulfillment_type":"manual"}],
+		"affiliate_code":"AFFTG001",
+		"affiliate_visitor_key":"visitor-998877"
+	}`)
+
+	var req previewOrderRequest
+	if err := json.Unmarshal(raw, &req); err != nil {
+		t.Fatalf("unmarshal preview order request failed: %v", err)
+	}
+	if req.AffiliateCode != "AFFTG001" {
+		t.Fatalf("expected affiliate code to bind, got=%s", req.AffiliateCode)
+	}
+	if req.AffiliateKey != "visitor-998877" {
+		t.Fatalf("expected affiliate visitor key to bind, got=%s", req.AffiliateKey)
+	}
+}
+
+func TestCreateOrderRequestBindsAffiliateFields(t *testing.T) {
+	raw := []byte(`{
+		"channel_user_id":"556677",
+		"telegram_user_id":"556677",
+		"product_id":12,
+		"sku_id":34,
+		"quantity":2,
+		"affiliate_code":"AFFTG002",
+		"affiliate_visitor_key":"visitor-556677"
+	}`)
+
+	var req createOrderRequest
+	if err := json.Unmarshal(raw, &req); err != nil {
+		t.Fatalf("unmarshal create order request failed: %v", err)
+	}
+	if req.AffiliateCode != "AFFTG002" {
+		t.Fatalf("expected affiliate code to bind, got=%s", req.AffiliateCode)
+	}
+	if req.AffiliateKey != "visitor-556677" {
+		t.Fatalf("expected affiliate visitor key to bind, got=%s", req.AffiliateKey)
 	}
 }

@@ -180,6 +180,12 @@ func SetupRouter(cfg *config.Config, c *provider.Container) *gin.Engine {
 			channelAPI.POST("/identities/telegram/provision", channelHandler.ProvisionTelegramIdentity)
 			channelAPI.POST("/identities/telegram/bind", channelHandler.BindTelegramIdentity)
 			channelAPI.GET("/me", channelHandler.GetCurrentIdentity)
+			channelAPI.POST("/affiliate/click", channelHandler.TrackAffiliateClick)
+			channelAPI.POST("/affiliate/open", channelHandler.OpenAffiliate)
+			channelAPI.GET("/affiliate/dashboard", channelHandler.GetAffiliateDashboard)
+			channelAPI.GET("/affiliate/commissions", channelHandler.ListAffiliateCommissions)
+			channelAPI.GET("/affiliate/withdraws", channelHandler.ListAffiliateWithdraws)
+			channelAPI.POST("/affiliate/withdraws", channelHandler.ApplyAffiliateWithdraw)
 
 			// Catalog 端点（商品浏览）
 			channelAPI.GET("/catalog/categories", channelHandler.GetCategories)

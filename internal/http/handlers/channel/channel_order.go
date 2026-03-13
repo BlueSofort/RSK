@@ -51,6 +51,8 @@ type previewOrderRequest struct {
 	Locale         string                    `json:"locale"`
 	Items          []channelOrderItemRequest `json:"items"`
 	CouponCode     string                    `json:"coupon_code"`
+	AffiliateCode  string                    `json:"affiliate_code"`
+	AffiliateKey   string                    `json:"affiliate_visitor_key"`
 	ManualFormData map[string]models.JSON    `json:"manual_form_data"`
 }
 
@@ -68,6 +70,8 @@ type createOrderRequest struct {
 	SKUID          uint                      `json:"sku_id"`
 	Quantity       int                       `json:"quantity"`
 	CouponCode     string                    `json:"coupon_code"`
+	AffiliateCode  string                    `json:"affiliate_code"`
+	AffiliateKey   string                    `json:"affiliate_visitor_key"`
 	ManualFormData map[string]models.JSON    `json:"manual_form_data"`
 }
 
@@ -119,11 +123,13 @@ func (h *Handler) PreviewOrder(c *gin.Context) {
 	}
 
 	preview, err := h.OrderService.PreviewOrder(service.CreateOrderInput{
-		UserID:         userID,
-		Items:          items,
-		CouponCode:     req.CouponCode,
-		ClientIP:       c.ClientIP(),
-		ManualFormData: req.ManualFormData,
+		UserID:              userID,
+		Items:               items,
+		CouponCode:          req.CouponCode,
+		AffiliateCode:       req.AffiliateCode,
+		AffiliateVisitorKey: req.AffiliateKey,
+		ClientIP:            c.ClientIP(),
+		ManualFormData:      req.ManualFormData,
 	})
 	if err != nil {
 		logger.Errorw("channel_order_preview", "user_id", userID, "error", err)
@@ -165,11 +171,13 @@ func (h *Handler) CreateOrder(c *gin.Context) {
 	}
 
 	order, err := h.OrderService.CreateOrder(service.CreateOrderInput{
-		UserID:         userID,
-		Items:          items,
-		CouponCode:     req.CouponCode,
-		ClientIP:       c.ClientIP(),
-		ManualFormData: req.ManualFormData,
+		UserID:              userID,
+		Items:               items,
+		CouponCode:          req.CouponCode,
+		AffiliateCode:       req.AffiliateCode,
+		AffiliateVisitorKey: req.AffiliateKey,
+		ClientIP:            c.ClientIP(),
+		ManualFormData:      req.ManualFormData,
 	})
 	if err != nil {
 		logger.Errorw("channel_order_create", "user_id", userID, "error", err)
