@@ -33,6 +33,9 @@ func BuildUserProfilePayload(user *models.User, emailMode, passwordMode string) 
 		"nickname":             user.DisplayName,
 		"email_verified_at":    user.EmailVerifiedAt,
 		"locale":               user.Locale,
+		"member_level_id":      user.MemberLevelID,
+		"total_recharged":      user.TotalRecharged,
+		"total_spent":          user.TotalSpent,
 		"email_change_mode":    emailMode,
 		"password_change_mode": passwordMode,
 	}

@@ -493,6 +493,10 @@ func (s *UserAuthService) findOrCreateTelegramUser(verified *TelegramIdentityVer
 	if err := s.userRepo.Create(user); err != nil {
 		return nil, err
 	}
+	// 分配默认会员等级
+	if s.memberLevelSvc != nil {
+		_ = s.memberLevelSvc.AssignDefaultLevel(user.ID)
+	}
 	return user, nil
 }
 

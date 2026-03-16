@@ -108,6 +108,21 @@ func (h *Handler) Ping(c *gin.Context) {
 	// 币种
 	currency, _ := h.SettingService.GetSiteCurrency("CNY")
 
+	// 用户会员等级
+	var memberLevel gin.H
+	user, err := h.UserRepo.GetByID(userID)
+	if err == nil && user != nil && user.MemberLevelID > 0 && h.MemberLevelService != nil {
+		level, levelErr := h.MemberLevelService.GetByID(user.MemberLevelID)
+		if levelErr == nil && level != nil {
+			memberLevel = gin.H{
+				"id":   level.ID,
+				"name": level.NameJSON,
+				"slug": level.Slug,
+				"icon": level.Icon,
+			}
+		}
+	}
+
 	successResponse(c, gin.H{
 		"ok":               true,
 		"site_name":        siteName,
@@ -115,6 +130,7 @@ func (h *Handler) Ping(c *gin.Context) {
 		"user_id":          userID,
 		"balance":          balanceStr,
 		"currency":         currency,
+		"member_level":     memberLevel,
 	})
 }
 
@@ -131,6 +147,8 @@ type upstreamProduct struct {
 	Images           models.StringArray `json:"images"`
 	Tags             models.StringArray `json:"tags"`
 	PriceAmount      string             `json:"price_amount"`
+	OriginalPrice    string             `json:"original_price,omitempty"`
+	MemberPrice      string             `json:"member_price,omitempty"`
 	FulfillmentType  string             `json:"fulfillment_type"`
 	ManualFormSchema models.JSON        `json:"manual_form_schema"`
 	IsActive         bool               `json:"is_active"`
@@ -145,6 +163,8 @@ type upstreamSKU struct {
 	SKUCode       string      `json:"sku_code"`
 	SpecValues    models.JSON `json:"spec_values"`
 	PriceAmount   string      `json:"price_amount"`
+	OriginalPrice string      `json:"original_price,omitempty"`
+	MemberPrice   string      `json:"member_price,omitempty"`
 	StockStatus   string      `json:"stock_status"`
 	StockQuantity int         `json:"stock_quantity"`
 	IsActive      bool        `json:"is_active"`
@@ -176,9 +196,19 @@ func (h *Handler) ListProducts(c *gin.Context) {
 	// 补充上游对接商品的 SKU 库存
 	h.applyUpstreamStockToProducts(products)
 
+	// 获取下游用户的会员等级
+	userID := getUpstreamUserID(c)
+	var memberLevelID uint
+	if userID > 0 {
+		user, err := h.UserRepo.GetByID(userID)
+		if err == nil && user != nil {
+			memberLevelID = user.MemberLevelID
+		}
+	}
+
 	items := make([]upstreamProduct, 0, len(products))
 	for _, p := range products {
-		items = append(items, toUpstreamProduct(p))
+		items = append(items, h.toUpstreamProductWithMemberPrice(p, memberLevelID))
 	}
 
 	successResponse(c, gin.H{
@@ -223,9 +253,19 @@ func (h *Handler) GetProduct(c *gin.Context) {
 	// 补充上游对接商品的 SKU 库存
 	h.applyUpstreamStockToProducts(products)
 
+	// 获取下游用户的会员等级
+	userID := getUpstreamUserID(c)
+	var memberLevelID uint
+	if userID > 0 {
+		user, err := h.UserRepo.GetByID(userID)
+		if err == nil && user != nil {
+			memberLevelID = user.MemberLevelID
+		}
+	}
+
 	successResponse(c, gin.H{
 		"ok":      true,
-		"product": toUpstreamProduct(products[0]),
+		"product": h.toUpstreamProductWithMemberPrice(products[0], memberLevelID),
 	})
 }
 
@@ -699,14 +739,14 @@ func (h *Handler) applyUpstreamStockToProducts(products []models.Product) {
 	}
 }
 
-func toUpstreamProduct(p models.Product) upstreamProduct {
+func (h *Handler) toUpstreamProductWithMemberPrice(p models.Product, memberLevelID uint) upstreamProduct {
 	skus := make([]upstreamSKU, 0, len(p.SKUs))
 	for _, s := range p.SKUs {
 		if !s.IsActive {
 			continue
 		}
 		stockStatus, stockQuantity := computeSKUStock(p, s)
-		skus = append(skus, upstreamSKU{
+		si := upstreamSKU{
 			ID:            s.ID,
 			SKUCode:       s.SKUCode,
 			SpecValues:    s.SpecValuesJSON,
@@ -714,10 +754,19 @@ func toUpstreamProduct(p models.Product) upstreamProduct {
 			StockStatus:   stockStatus,
 			StockQuantity: stockQuantity,
 			IsActive:      s.IsActive,
-		})
+		}
+		if memberLevelID > 0 && h.MemberLevelService != nil {
+			mp, _ := h.MemberLevelService.ResolveMemberPrice(memberLevelID, p.ID, s.ID, s.PriceAmount.Decimal)
+			if mp.LessThan(s.PriceAmount.Decimal) {
+				si.OriginalPrice = si.PriceAmount
+				si.MemberPrice = models.NewMoneyFromDecimal(mp).StringFixed(2)
+				si.PriceAmount = si.MemberPrice // price_amount 是实际售价（会员价）
+			}
+		}
+		skus = append(skus, si)
 	}
 
-	return upstreamProduct{
+	result := upstreamProduct{
 		ID:               p.ID,
 		Slug:             p.Slug,
 		SeoMeta:          p.SeoMetaJSON,
@@ -735,6 +784,17 @@ func toUpstreamProduct(p models.Product) upstreamProduct {
 		CreatedAt:        p.CreatedAt,
 		UpdatedAt:        p.UpdatedAt,
 	}
+
+	if memberLevelID > 0 && h.MemberLevelService != nil {
+		mp, _ := h.MemberLevelService.ResolveMemberPrice(memberLevelID, p.ID, 0, p.PriceAmount.Decimal)
+		if mp.LessThan(p.PriceAmount.Decimal) {
+			result.OriginalPrice = result.PriceAmount
+			result.MemberPrice = models.NewMoneyFromDecimal(mp).StringFixed(2)
+			result.PriceAmount = result.MemberPrice
+		}
+	}
+
+	return result
 }
 
 // computeSKUStock 计算 SKU 的库存状态和实际可用量

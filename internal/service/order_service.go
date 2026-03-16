@@ -17,51 +17,57 @@ import (
 
 // OrderService 订单服务
 type OrderService struct {
-	orderRepo       repository.OrderRepository
-	productRepo     repository.ProductRepository
-	productSKURepo  repository.ProductSKURepository
-	cardSecretRepo  repository.CardSecretRepository
-	couponRepo      repository.CouponRepository
-	couponUsageRepo repository.CouponUsageRepository
-	promotionRepo   repository.PromotionRepository
-	queueClient     *queue.Client
-	settingService  *SettingService
-	walletService   *WalletService
-	affiliateSvc    *AffiliateService
-	expireMinutes   int
+	orderRepo          repository.OrderRepository
+	userRepo           repository.UserRepository
+	productRepo        repository.ProductRepository
+	productSKURepo     repository.ProductSKURepository
+	cardSecretRepo     repository.CardSecretRepository
+	couponRepo         repository.CouponRepository
+	couponUsageRepo    repository.CouponUsageRepository
+	promotionRepo      repository.PromotionRepository
+	queueClient        *queue.Client
+	settingService     *SettingService
+	walletService      *WalletService
+	affiliateSvc       *AffiliateService
+	memberLevelService *MemberLevelService
+	expireMinutes      int
 }
 
 // OrderServiceOptions 订单服务构造参数
 type OrderServiceOptions struct {
-	OrderRepo        repository.OrderRepository
-	ProductRepo      repository.ProductRepository
-	ProductSKURepo   repository.ProductSKURepository
-	CardSecretRepo   repository.CardSecretRepository
-	CouponRepo       repository.CouponRepository
-	CouponUsageRepo  repository.CouponUsageRepository
-	PromotionRepo    repository.PromotionRepository
-	QueueClient      *queue.Client
-	SettingService   *SettingService
-	WalletService    *WalletService
-	AffiliateService *AffiliateService
-	ExpireMinutes    int
+	OrderRepo          repository.OrderRepository
+	UserRepo           repository.UserRepository
+	ProductRepo        repository.ProductRepository
+	ProductSKURepo     repository.ProductSKURepository
+	CardSecretRepo     repository.CardSecretRepository
+	CouponRepo         repository.CouponRepository
+	CouponUsageRepo    repository.CouponUsageRepository
+	PromotionRepo      repository.PromotionRepository
+	QueueClient        *queue.Client
+	SettingService     *SettingService
+	WalletService      *WalletService
+	AffiliateService   *AffiliateService
+	MemberLevelService *MemberLevelService
+	ExpireMinutes      int
 }
 
 // NewOrderService 创建订单服务
 func NewOrderService(opts OrderServiceOptions) *OrderService {
 	return &OrderService{
-		orderRepo:       opts.OrderRepo,
-		productRepo:     opts.ProductRepo,
-		productSKURepo:  opts.ProductSKURepo,
-		cardSecretRepo:  opts.CardSecretRepo,
-		couponRepo:      opts.CouponRepo,
-		couponUsageRepo: opts.CouponUsageRepo,
-		promotionRepo:   opts.PromotionRepo,
-		queueClient:     opts.QueueClient,
-		settingService:  opts.SettingService,
-		walletService:   opts.WalletService,
-		affiliateSvc:    opts.AffiliateService,
-		expireMinutes:   opts.ExpireMinutes,
+		orderRepo:          opts.OrderRepo,
+		userRepo:           opts.UserRepo,
+		productRepo:        opts.ProductRepo,
+		productSKURepo:     opts.ProductSKURepo,
+		cardSecretRepo:     opts.CardSecretRepo,
+		couponRepo:         opts.CouponRepo,
+		couponUsageRepo:    opts.CouponUsageRepo,
+		promotionRepo:      opts.PromotionRepo,
+		queueClient:        opts.QueueClient,
+		settingService:     opts.SettingService,
+		walletService:      opts.WalletService,
+		affiliateSvc:       opts.AffiliateService,
+		memberLevelService: opts.MemberLevelService,
+		expireMinutes:      opts.ExpireMinutes,
 	}
 }
 
@@ -103,6 +109,7 @@ type childOrderPlan struct {
 	SKU               *models.ProductSKU
 	Item              models.OrderItem
 	TotalAmount       decimal.Decimal
+	MemberDiscount    decimal.Decimal
 	PromotionDiscount decimal.Decimal
 	CouponDiscount    decimal.Decimal
 	Currency          string
@@ -191,6 +198,7 @@ type orderCreateParams struct {
 type OrderPreview struct {
 	Currency                string             `json:"currency"`
 	OriginalAmount          models.Money       `json:"original_amount"`
+	MemberDiscountAmount    models.Money       `json:"member_discount_amount"`
 	DiscountAmount          models.Money       `json:"discount_amount"`
 	PromotionDiscountAmount models.Money       `json:"promotion_discount_amount"`
 	TotalAmount             models.Money       `json:"total_amount"`
@@ -207,6 +215,7 @@ type OrderPreviewItem struct {
 	UnitPrice         models.Money       `json:"unit_price"`
 	Quantity          int                `json:"quantity"`
 	TotalPrice        models.Money       `json:"total_price"`
+	MemberDiscount    models.Money       `json:"member_discount_amount"`
 	CouponDiscount    models.Money       `json:"coupon_discount_amount"`
 	PromotionDiscount models.Money       `json:"promotion_discount_amount"`
 	FulfillmentType   string             `json:"fulfillment_type"`
@@ -216,11 +225,13 @@ type orderBuildResult struct {
 	Plans                   []childOrderPlan
 	OrderItems              []models.OrderItem
 	OriginalAmount          decimal.Decimal
+	MemberDiscountAmount    decimal.Decimal
 	PromotionDiscountAmount decimal.Decimal
 	DiscountAmount          decimal.Decimal
 	TotalAmount             decimal.Decimal
 	Currency                string
 	OrderPromotionID        *uint
+	MemberLevelID           *uint
 	AppliedCoupon           *models.Coupon
 }
 
@@ -273,6 +284,7 @@ func (s *OrderService) previewOrder(input orderCreateParams) (*OrderPreview, err
 			UnitPrice:         item.UnitPrice,
 			Quantity:          item.Quantity,
 			TotalPrice:        item.TotalPrice,
+			MemberDiscount:    item.MemberDiscount,
 			CouponDiscount:    item.CouponDiscount,
 			PromotionDiscount: item.PromotionDiscount,
 			FulfillmentType:   item.FulfillmentType,
@@ -281,6 +293,7 @@ func (s *OrderService) previewOrder(input orderCreateParams) (*OrderPreview, err
 	return &OrderPreview{
 		Currency:                result.Currency,
 		OriginalAmount:          models.NewMoneyFromDecimal(result.OriginalAmount),
+		MemberDiscountAmount:    models.NewMoneyFromDecimal(result.MemberDiscountAmount),
 		DiscountAmount:          models.NewMoneyFromDecimal(result.DiscountAmount),
 		PromotionDiscountAmount: models.NewMoneyFromDecimal(result.PromotionDiscountAmount),
 		TotalAmount:             models.NewMoneyFromDecimal(result.TotalAmount),
@@ -333,12 +346,14 @@ func (s *OrderService) createOrder(input orderCreateParams) (*models.Order, erro
 		Status:                  constants.OrderStatusPendingPayment,
 		Currency:                result.Currency,
 		OriginalAmount:          models.NewMoneyFromDecimal(result.OriginalAmount),
+		MemberDiscountAmount:    models.NewMoneyFromDecimal(result.MemberDiscountAmount),
 		DiscountAmount:          models.NewMoneyFromDecimal(result.DiscountAmount),
 		PromotionDiscountAmount: models.NewMoneyFromDecimal(result.PromotionDiscountAmount),
 		TotalAmount:             models.NewMoneyFromDecimal(result.TotalAmount),
 		WalletPaidAmount:        models.NewMoneyFromDecimal(decimal.Zero),
 		OnlinePaidAmount:        models.NewMoneyFromDecimal(result.TotalAmount),
 		RefundedAmount:          models.NewMoneyFromDecimal(decimal.Zero),
+		MemberLevelID:           result.MemberLevelID,
 		CouponID:                nil,
 		PromotionID:             result.OrderPromotionID,
 		AffiliateProfileID:      affiliateProfileID,
@@ -375,6 +390,7 @@ func (s *OrderService) createOrder(input orderCreateParams) (*models.Order, erro
 				Status:                  constants.OrderStatusPendingPayment,
 				Currency:                plan.Currency,
 				OriginalAmount:          models.NewMoneyFromDecimal(plan.TotalAmount),
+				MemberDiscountAmount:    models.NewMoneyFromDecimal(plan.MemberDiscount),
 				DiscountAmount:          models.NewMoneyFromDecimal(plan.CouponDiscount),
 				PromotionDiscountAmount: models.NewMoneyFromDecimal(plan.PromotionDiscount),
 				TotalAmount:             models.NewMoneyFromDecimal(normalizeOrderAmount(plan.TotalAmount.Sub(plan.CouponDiscount))),

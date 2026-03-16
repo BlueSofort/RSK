@@ -28,6 +28,14 @@ const (
 type PublicSKUView struct {
 	models.ProductSKU
 	PromotionPriceAmount *models.Money `json:"promotion_price_amount,omitempty"`
+	MemberPriceAmount    *models.Money `json:"member_price_amount,omitempty"`
+}
+
+// MemberLevelPriceView 会员等级价格视图
+type MemberLevelPriceView struct {
+	MemberLevelID uint         `json:"member_level_id"`
+	SKUID         uint         `json:"sku_id"`
+	PriceAmount   models.Money `json:"price_amount"`
 }
 
 // PromotionRuleView 活动规则展示结构
@@ -42,16 +50,17 @@ type PromotionRuleView struct {
 // PublicProductView 公共商品响应结构
 type PublicProductView struct {
 	models.Product
-	PromotionID          *uint               `json:"promotion_id,omitempty"`
-	PromotionName        string              `json:"promotion_name,omitempty"`
-	PromotionType        string              `json:"promotion_type,omitempty"`
-	PromotionPriceAmount *models.Money       `json:"promotion_price_amount,omitempty"`
-	PromotionRules       []PromotionRuleView `json:"promotion_rules,omitempty"`
-	PublicSKUs           *[]PublicSKUView    `json:"skus,omitempty"`
-	ManualStockAvailable int                 `json:"manual_stock_available"`
-	AutoStockAvailable   int64               `json:"auto_stock_available"`
-	StockStatus          string              `json:"stock_status"`
-	IsSoldOut            bool                `json:"is_sold_out"`
+	PromotionID          *uint                  `json:"promotion_id,omitempty"`
+	PromotionName        string                 `json:"promotion_name,omitempty"`
+	PromotionType        string                 `json:"promotion_type,omitempty"`
+	PromotionPriceAmount *models.Money          `json:"promotion_price_amount,omitempty"`
+	PromotionRules       []PromotionRuleView    `json:"promotion_rules,omitempty"`
+	MemberPrices         []MemberLevelPriceView `json:"member_prices,omitempty"`
+	PublicSKUs           *[]PublicSKUView       `json:"skus,omitempty"`
+	ManualStockAvailable int                    `json:"manual_stock_available"`
+	AutoStockAvailable   int64                  `json:"auto_stock_available"`
+	StockStatus          string                 `json:"stock_status"`
+	IsSoldOut            bool                   `json:"is_sold_out"`
 }
 
 // GetConfig 获取全局配置
@@ -133,6 +142,43 @@ func (h *Handler) GetConfig(c *gin.Context) {
 	response.Success(c, data)
 }
 
+// GetPublicMemberLevels 获取公共会员等级列表
+func (h *Handler) GetPublicMemberLevels(c *gin.Context) {
+	levels, err := h.MemberLevelService.ListActiveLevels()
+	if err != nil {
+		shared.RespondError(c, response.CodeInternal, "error.member_level_fetch_failed", err)
+		return
+	}
+
+	type PublicMemberLevelView struct {
+		ID                uint        `json:"id"`
+		Name              models.JSON `json:"name"`
+		Slug              string      `json:"slug"`
+		Icon              string      `json:"icon"`
+		DiscountRate      float64     `json:"discount_rate"`
+		RechargeThreshold float64     `json:"recharge_threshold"`
+		SpendThreshold    float64     `json:"spend_threshold"`
+		IsDefault         bool        `json:"is_default"`
+		SortOrder         int         `json:"sort_order"`
+	}
+
+	views := make([]PublicMemberLevelView, 0, len(levels))
+	for _, l := range levels {
+		views = append(views, PublicMemberLevelView{
+			ID:                l.ID,
+			Name:              l.NameJSON,
+			Slug:              l.Slug,
+			Icon:              l.Icon,
+			DiscountRate:      l.DiscountRate.Decimal.InexactFloat64(),
+			RechargeThreshold: l.RechargeThreshold.Decimal.InexactFloat64(),
+			SpendThreshold:    l.SpendThreshold.Decimal.InexactFloat64(),
+			IsDefault:         l.IsDefault,
+			SortOrder:         l.SortOrder,
+		})
+	}
+	response.Success(c, views)
+}
+
 // GetProducts 获取商品列表
 func (h *Handler) GetProducts(c *gin.Context) {
 	// 获取分页参数
@@ -210,7 +256,7 @@ func (h *Handler) GetProductBySlug(c *gin.Context) {
 	response.Success(c, decorated)
 }
 
-func (h *Handler) decoratePublicProduct(product *models.Product, promotionService *service.PromotionService) (PublicProductView, error) {
+func (h *Handler) decoratePublicProduct(product *models.Product, promotionService *service.PromotionService, userMemberLevelID ...uint) (PublicProductView, error) {
 	if product == nil {
 		return PublicProductView{}, nil
 	}
@@ -238,6 +284,26 @@ func (h *Handler) decoratePublicProduct(product *models.Product, promotionServic
 		}
 	}
 
+	// 附加会员等级价格
+	var memberLevelID uint
+	if len(userMemberLevelID) > 0 {
+		memberLevelID = userMemberLevelID[0]
+	}
+	if h.Container != nil && h.MemberLevelService != nil {
+		levelPrices, _ := h.MemberLevelService.GetLevelPricesByProduct(product.ID)
+		if len(levelPrices) > 0 {
+			views := make([]MemberLevelPriceView, 0, len(levelPrices))
+			for _, lp := range levelPrices {
+				views = append(views, MemberLevelPriceView{
+					MemberLevelID: lp.MemberLevelID,
+					SKUID:         lp.SKUID,
+					PriceAmount:   lp.PriceAmount,
+				})
+			}
+			item.MemberPrices = views
+		}
+	}
+
 	// 构建 PublicSKUs 并为每个 active SKU 计算促销价
 	// 使用 item.Product.SKUs（decorateProductStock 可能已修改库存字段）
 	skuViews := make([]PublicSKUView, 0, len(item.Product.SKUs))
@@ -246,6 +312,16 @@ func (h *Handler) decoratePublicProduct(product *models.Product, promotionServic
 
 	for _, sku := range item.Product.SKUs {
 		sv := PublicSKUView{ProductSKU: sku}
+
+		// 计算当前用户的会员价
+		if memberLevelID > 0 && h.Container != nil && h.MemberLevelService != nil && sku.IsActive {
+			memberPrice, _ := h.MemberLevelService.ResolveMemberPrice(memberLevelID, product.ID, sku.ID, sku.PriceAmount.Decimal)
+			if memberPrice.LessThan(sku.PriceAmount.Decimal) {
+				mp := models.NewMoneyFromDecimal(memberPrice)
+				sv.MemberPriceAmount = &mp
+			}
+		}
+
 		if promotionService != nil && sku.IsActive {
 			priceCarrier := *product
 			priceCarrier.PriceAmount = sku.PriceAmount

@@ -35,6 +35,7 @@ type PaymentService struct {
 	notificationSvc       *NotificationService
 	procurementSvc        *ProcurementOrderService
 	downstreamCallbackSvc *DownstreamCallbackService
+	memberLevelSvc        *MemberLevelService
 }
 
 // SetProcurementService 设置采购单服务（解决循环依赖）
@@ -45,6 +46,11 @@ func (s *PaymentService) SetProcurementService(svc *ProcurementOrderService) {
 // SetDownstreamCallbackService 设置下游回调服务（解决循环依赖）
 func (s *PaymentService) SetDownstreamCallbackService(svc *DownstreamCallbackService) {
 	s.downstreamCallbackSvc = svc
+}
+
+// SetMemberLevelService 设置会员等级服务
+func (s *PaymentService) SetMemberLevelService(svc *MemberLevelService) {
+	s.memberLevelSvc = svc
 }
 
 // PaymentServiceOptions 支付服务构造参数

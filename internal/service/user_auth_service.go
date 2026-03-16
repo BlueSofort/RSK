@@ -28,6 +28,12 @@ type UserAuthService struct {
 	codeRepo              repository.EmailVerifyCodeRepository
 	emailService          *EmailService
 	telegramAuthService   *TelegramAuthService
+	memberLevelSvc        *MemberLevelService
+}
+
+// SetMemberLevelService 设置会员等级服务
+func (s *UserAuthService) SetMemberLevelService(svc *MemberLevelService) {
+	s.memberLevelSvc = svc
 }
 
 // NewUserAuthService 创建用户认证服务
@@ -206,6 +212,11 @@ func (s *UserAuthService) Register(email, password, code string, agreementAccept
 
 	if err := s.userRepo.Create(user); err != nil {
 		return nil, "", time.Time{}, err
+	}
+
+	// 分配默认会员等级
+	if s.memberLevelSvc != nil {
+		_ = s.memberLevelSvc.AssignDefaultLevel(user.ID)
 	}
 
 	token, expiresAt, err := s.GenerateUserJWT(user, 0)

@@ -19,11 +19,13 @@ type Order struct {
 	Currency                string         `gorm:"not null" json:"currency"`                                               // 币种
 	OriginalAmount          Money          `gorm:"type:decimal(20,2);not null;default:0" json:"original_amount"`           // 原始金额
 	DiscountAmount          Money          `gorm:"type:decimal(20,2);not null;default:0" json:"discount_amount"`           // 优惠金额
+	MemberDiscountAmount    Money          `gorm:"type:decimal(20,2);not null;default:0" json:"member_discount_amount"`    // 会员优惠金额
 	PromotionDiscountAmount Money          `gorm:"type:decimal(20,2);not null;default:0" json:"promotion_discount_amount"` // 活动价优惠金额
 	TotalAmount             Money          `gorm:"type:decimal(20,2);not null;default:0" json:"total_amount"`              // 实付金额
 	WalletPaidAmount        Money          `gorm:"type:decimal(20,2);not null;default:0" json:"wallet_paid_amount"`        // 钱包支付金额
 	OnlinePaidAmount        Money          `gorm:"type:decimal(20,2);not null;default:0" json:"online_paid_amount"`        // 在线支付金额
 	RefundedAmount          Money          `gorm:"type:decimal(20,2);not null;default:0" json:"refunded_amount"`           // 已退款金额（退回钱包）
+	MemberLevelID           *uint          `gorm:"index" json:"member_level_id,omitempty"`                                 // 下单时等级快照
 	CouponID                *uint          `gorm:"index" json:"coupon_id,omitempty"`                                       // 优惠券ID
 	PromotionID             *uint          `gorm:"index" json:"promotion_id,omitempty"`                                    // 活动价ID（单品订单）
 	AffiliateProfileID      *uint          `gorm:"index" json:"affiliate_profile_id,omitempty"`                            // 推广返利关联用户ID快照

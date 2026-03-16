@@ -295,6 +295,15 @@ func (s *PaymentService) applyWalletRechargePaymentUpdate(payment *models.Paymen
 	if err != nil {
 		return nil, err
 	}
+
+	// 充值成功后触发会员等级升级检查（事务已提交）
+	if status == constants.PaymentStatusSuccess && s.memberLevelSvc != nil {
+		if recharge, _ := s.walletRepo.GetRechargeOrderByPaymentID(payment.ID); recharge != nil &&
+			recharge.Status == constants.WalletRechargeStatusSuccess && recharge.UserID > 0 {
+			_ = s.memberLevelSvc.OnRechargeCompleted(recharge.UserID, recharge.Amount.Decimal)
+		}
+	}
+
 	return paymentVal, nil
 }
 
@@ -491,6 +500,11 @@ func (s *PaymentService) enqueueOrderPaidAsync(order *models.Order, payment *mod
 	s.enqueueOrderPaidNotificationAsync(order, payment, log)
 	s.enqueueOrderPaidBotNotifyAsync(order, log)
 	s.enqueueExceptionAlertCheckAsync("order_paid", log)
+
+	// 订单支付成功后触发会员等级升级检查
+	if s.memberLevelSvc != nil && order.UserID > 0 {
+		_ = s.memberLevelSvc.OnOrderPaid(order.UserID, order.TotalAmount.Decimal)
+	}
 
 	if s.queueClient == nil {
 		return

@@ -85,6 +85,7 @@ func SetupRouter(cfg *config.Config, c *provider.Container) *gin.Engine {
 			public.GET("/categories", publicHandler.GetCategories)
 			public.GET("/captcha/image", publicHandler.GetImageCaptcha)
 			public.POST("/affiliate/click", publicHandler.TrackAffiliateClick)
+			public.GET("/member-levels", publicHandler.GetPublicMemberLevels)
 		}
 
 		// 游客接口
@@ -191,6 +192,7 @@ func SetupRouter(cfg *config.Config, c *provider.Container) *gin.Engine {
 			channelAPI.GET("/catalog/categories", channelHandler.GetCategories)
 			channelAPI.GET("/catalog/products", channelHandler.GetProducts)
 			channelAPI.GET("/catalog/products/:id", channelHandler.GetProductDetail)
+			channelAPI.GET("/member-levels", channelHandler.GetMemberLevels)
 
 			// Order / Payment 端点（购买流程）
 			channelAPI.POST("/orders/preview", channelHandler.PreviewOrder)
@@ -338,6 +340,15 @@ func SetupRouter(cfg *config.Config, c *provider.Container) *gin.Engine {
 				authorized.PUT("/promotions/:id", adminHandler.UpdatePromotion)
 				authorized.DELETE("/promotions/:id", adminHandler.DeletePromotion)
 
+				// 会员等级
+				authorized.GET("/member-levels", adminHandler.GetAdminMemberLevels)
+				authorized.POST("/member-levels", adminHandler.CreateMemberLevel)
+				authorized.PUT("/member-levels/:id", adminHandler.UpdateMemberLevel)
+				authorized.DELETE("/member-levels/:id", adminHandler.DeleteMemberLevel)
+				authorized.GET("/member-level-prices", adminHandler.GetMemberLevelPrices)
+				authorized.POST("/member-level-prices/batch", adminHandler.BatchUpsertMemberLevelPrices)
+				authorized.DELETE("/member-level-prices/:id", adminHandler.DeleteMemberLevelPrice)
+
 				// 支付渠道与支付记录
 				authorized.POST("/payment-channels", adminHandler.CreatePaymentChannel)
 				authorized.GET("/payment-channels", adminHandler.GetPaymentChannels)
@@ -358,6 +369,7 @@ func SetupRouter(cfg *config.Config, c *provider.Container) *gin.Engine {
 				authorized.GET("/users/:id/wallet", adminHandler.GetAdminUserWallet)
 				authorized.GET("/users/:id/wallet/transactions", adminHandler.GetAdminUserWalletTransactions)
 				authorized.POST("/users/:id/wallet/adjust", adminHandler.AdjustAdminUserWallet)
+				authorized.PUT("/users/:id/member-level", adminHandler.SetUserMemberLevel)
 				authorized.GET("/wallet/recharges", adminHandler.GetAdminWalletRecharges)
 
 				// API 凭证审核管理

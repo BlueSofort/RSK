@@ -119,6 +119,8 @@ func AutoMigrate() error {
 		&ReconciliationItem{},
 		&ChannelClient{},
 		&TelegramBroadcast{},
+		&MemberLevel{},
+		&MemberLevelPrice{},
 	); err != nil {
 		return err
 	}

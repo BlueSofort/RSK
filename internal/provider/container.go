@@ -53,6 +53,8 @@ type Container struct {
 	ReconciliationItemRepo repository.ReconciliationItemRepository
 	ChannelClientRepo      repository.ChannelClientRepository
 	TelegramBroadcastRepo  repository.TelegramBroadcastRepository
+	MemberLevelRepo        repository.MemberLevelRepository
+	MemberLevelPriceRepo   repository.MemberLevelPriceRepository
 
 	// Services
 	AuthzService              *authz.Service
@@ -89,6 +91,7 @@ type Container struct {
 	ReconciliationService     *service.ReconciliationService
 	ChannelClientService      *service.ChannelClientService
 	TelegramBroadcastService  *service.TelegramBroadcastService
+	MemberLevelService        *service.MemberLevelService
 }
 
 // NewContainer 初始化容器
@@ -161,6 +164,8 @@ func (c *Container) initRepositories() {
 	c.ReconciliationItemRepo = repository.NewReconciliationItemRepository(db)
 	c.ChannelClientRepo = repository.NewChannelClientRepository(db)
 	c.TelegramBroadcastRepo = repository.NewTelegramBroadcastRepository(db)
+	c.MemberLevelRepo = repository.NewMemberLevelRepository(db)
+	c.MemberLevelPriceRepo = repository.NewMemberLevelPriceRepository(db)
 }
 
 func (c *Container) initServices() {
@@ -209,19 +214,22 @@ func (c *Container) initServices() {
 	c.CategoryService = service.NewCategoryService(c.CategoryRepo)
 	c.CartService = service.NewCartService(c.CartRepo, c.ProductRepo, c.ProductSKURepo, c.PromotionRepo, c.SettingService)
 	c.WalletService = service.NewWalletService(c.WalletRepo, c.OrderRepo, c.UserRepo, c.AffiliateService)
+	c.MemberLevelService = service.NewMemberLevelService(c.MemberLevelRepo, c.MemberLevelPriceRepo, c.UserRepo)
 	c.OrderService = service.NewOrderService(service.OrderServiceOptions{
-		OrderRepo:        c.OrderRepo,
-		ProductRepo:      c.ProductRepo,
-		ProductSKURepo:   c.ProductSKURepo,
-		CardSecretRepo:   c.CardSecretRepo,
-		CouponRepo:       c.CouponRepo,
-		CouponUsageRepo:  c.CouponUsageRepo,
-		PromotionRepo:    c.PromotionRepo,
-		QueueClient:      c.QueueClient,
-		SettingService:   c.SettingService,
-		WalletService:    c.WalletService,
-		AffiliateService: c.AffiliateService,
-		ExpireMinutes:    c.Config.Order.PaymentExpireMinutes,
+		OrderRepo:          c.OrderRepo,
+		UserRepo:           c.UserRepo,
+		ProductRepo:        c.ProductRepo,
+		ProductSKURepo:     c.ProductSKURepo,
+		CardSecretRepo:     c.CardSecretRepo,
+		CouponRepo:         c.CouponRepo,
+		CouponUsageRepo:    c.CouponUsageRepo,
+		PromotionRepo:      c.PromotionRepo,
+		QueueClient:        c.QueueClient,
+		SettingService:     c.SettingService,
+		WalletService:      c.WalletService,
+		AffiliateService:   c.AffiliateService,
+		MemberLevelService: c.MemberLevelService,
+		ExpireMinutes:      c.Config.Order.PaymentExpireMinutes,
 	})
 	c.FulfillmentService = service.NewFulfillmentService(
 		c.OrderRepo, c.FulfillmentRepo, c.CardSecretRepo, c.QueueClient,
@@ -272,6 +280,8 @@ func (c *Container) initServices() {
 		c.QueueClient,
 		service.NewTelegramNotifyService(c.SettingService, c.Config.TelegramAuth),
 	)
+	c.UserAuthService.SetMemberLevelService(c.MemberLevelService)
+	c.PaymentService.SetMemberLevelService(c.MemberLevelService)
 	c.PaymentService.SetProcurementService(c.ProcurementOrderService)
 	c.PaymentService.SetDownstreamCallbackService(c.DownstreamCallbackService)
 	c.FulfillmentService.SetDownstreamCallbackService(c.DownstreamCallbackService)

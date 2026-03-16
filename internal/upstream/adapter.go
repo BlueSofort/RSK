@@ -11,11 +11,12 @@ import (
 
 // PingResult 连接测试结果
 type PingResult struct {
-	SiteName        string `json:"site_name"`
-	ProtocolVersion string `json:"protocol_version"`
-	UserID          uint   `json:"user_id"`
-	Balance         string `json:"balance"`
-	Currency        string `json:"currency"`
+	SiteName        string                 `json:"site_name"`
+	ProtocolVersion string                 `json:"protocol_version"`
+	UserID          uint                   `json:"user_id"`
+	Balance         string                 `json:"balance"`
+	Currency        string                 `json:"currency"`
+	MemberLevel     map[string]interface{} `json:"member_level,omitempty"`
 }
 
 // ListProductsOpts 商品列表参数
@@ -41,6 +42,8 @@ type UpstreamProduct struct {
 	Images           []string      `json:"images"`
 	Tags             []string      `json:"tags"`
 	PriceAmount      string        `json:"price_amount"`
+	OriginalPrice    string        `json:"original_price,omitempty"`
+	MemberPrice      string        `json:"member_price,omitempty"`
 	Currency         string        `json:"currency"`
 	FulfillmentType  string        `json:"fulfillment_type"`
 	ManualFormSchema models.JSON   `json:"manual_form_schema"`
@@ -55,6 +58,8 @@ type UpstreamSKU struct {
 	SKUCode       string      `json:"sku_code"`
 	SpecValues    models.JSON `json:"spec_values"`
 	PriceAmount   string      `json:"price_amount"`
+	OriginalPrice string      `json:"original_price,omitempty"`
+	MemberPrice   string      `json:"member_price,omitempty"`
 	StockStatus   string      `json:"stock_status"`
 	StockQuantity int         `json:"stock_quantity"` // 实际可用库存（-1=无限）
 	IsActive      bool        `json:"is_active"`

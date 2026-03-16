@@ -182,7 +182,7 @@ func (r *GormProductRepository) GetByID(id string) (*models.Product, error) {
 	var product models.Product
 	if err := r.db.Preload("Category").
 		Preload("SKUs", func(db *gorm.DB) *gorm.DB {
-			return db.Order("sort_order DESC, id ASC")
+			return db.Where("is_active = ?", true).Order("sort_order DESC, id ASC")
 		}).
 		First(&product, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

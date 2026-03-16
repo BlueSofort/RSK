@@ -8,6 +8,7 @@ import (
 
 	"github.com/dujiao-next/internal/logger"
 	"github.com/dujiao-next/internal/models"
+	"github.com/dujiao-next/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
@@ -86,16 +87,28 @@ func (h *Handler) GetProducts(c *gin.Context) {
 		currency = "CNY"
 	}
 
+	// 可选：通过 channel_user_id 获取用户会员等级
+	var memberLevelID uint
+	if cuid := channelUserIDFromQuery(c); cuid != "" {
+		user, _, err := h.UserAuthService.ResolveTelegramChannelIdentity(service.TelegramChannelIdentityInput{
+			ChannelUserID: cuid,
+		})
+		if err == nil && user != nil {
+			memberLevelID = user.MemberLevelID
+		}
+	}
+
 	type productItem struct {
-		ID           uint   `json:"id"`
-		Title        string `json:"title"`
-		Summary      string `json:"summary"`
-		ImageURL     string `json:"image_url"`
-		PriceFrom    string `json:"price_from"`
-		Currency     string `json:"currency"`
-		StockStatus  string `json:"stock_status"`
-		StockCount   int64  `json:"stock_count"`
-		CategoryName string `json:"category_name"`
+		ID              uint   `json:"id"`
+		Title           string `json:"title"`
+		Summary         string `json:"summary"`
+		ImageURL        string `json:"image_url"`
+		PriceFrom       string `json:"price_from"`
+		MemberPriceFrom string `json:"member_price_from,omitempty"`
+		Currency        string `json:"currency"`
+		StockStatus     string `json:"stock_status"`
+		StockCount      int64  `json:"stock_count"`
+		CategoryName    string `json:"category_name"`
 	}
 
 	items := make([]productItem, 0, len(products))
@@ -109,7 +122,7 @@ func (h *Handler) GetProducts(c *gin.Context) {
 			imageURL = string(p.Images[0])
 		}
 
-		items = append(items, productItem{
+		item := productItem{
 			ID:           p.ID,
 			Title:        title,
 			Summary:      summary,
@@ -119,7 +132,17 @@ func (h *Handler) GetProducts(c *gin.Context) {
 			StockStatus:  computeStockStatus(p.FulfillmentType, p.AutoStockAvailable, p.ManualStockTotal),
 			StockCount:   computeStockCount(p.FulfillmentType, p.AutoStockAvailable, p.ManualStockTotal),
 			CategoryName: resolveLocalizedJSON(p.Category.NameJSON, locale, defaultLocale),
-		})
+		}
+
+		// 计算会员价
+		if memberLevelID > 0 && h.MemberLevelService != nil {
+			memberPrice, _ := h.MemberLevelService.ResolveMemberPrice(memberLevelID, p.ID, 0, p.PriceAmount.Decimal)
+			if memberPrice.LessThan(p.PriceAmount.Decimal) {
+				item.MemberPriceFrom = models.NewMoneyFromDecimal(memberPrice).String()
+			}
+		}
+
+		items = append(items, item)
 	}
 
 	totalPages := int64(math.Ceil(float64(total) / float64(pageSize)))
@@ -171,11 +194,23 @@ func (h *Handler) GetProductDetail(c *gin.Context) {
 		imageURL = string(product.Images[0])
 	}
 
+	// 可选：通过 channel_user_id 获取用户会员等级
+	var memberLevelID uint
+	if cuid := channelUserIDFromQuery(c); cuid != "" {
+		user, _, err := h.UserAuthService.ResolveTelegramChannelIdentity(service.TelegramChannelIdentityInput{
+			ChannelUserID: cuid,
+		})
+		if err == nil && user != nil {
+			memberLevelID = user.MemberLevelID
+		}
+	}
+
 	type skuItem struct {
 		ID          uint   `json:"id"`
 		SKUCode     string `json:"sku_code"`
 		SpecValues  string `json:"spec_values"`
 		Price       string `json:"price"`
+		MemberPrice string `json:"member_price,omitempty"`
 		StockStatus string `json:"stock_status"`
 		StockCount  int64  `json:"stock_count"`
 	}
@@ -186,14 +221,30 @@ func (h *Handler) GetProductDetail(c *gin.Context) {
 			continue
 		}
 		specValues := resolveLocalizedJSON(sku.SpecValuesJSON, locale, defaultLocale)
-		skus = append(skus, skuItem{
+		si := skuItem{
 			ID:          sku.ID,
 			SKUCode:     sku.SKUCode,
 			SpecValues:  specValues,
 			Price:       sku.PriceAmount.String(),
 			StockStatus: computeStockStatus(product.FulfillmentType, sku.AutoStockAvailable, sku.ManualStockTotal),
 			StockCount:  computeStockCount(product.FulfillmentType, sku.AutoStockAvailable, sku.ManualStockTotal),
-		})
+		}
+		if memberLevelID > 0 && h.MemberLevelService != nil {
+			memberPrice, _ := h.MemberLevelService.ResolveMemberPrice(memberLevelID, product.ID, sku.ID, sku.PriceAmount.Decimal)
+			if memberPrice.LessThan(sku.PriceAmount.Decimal) {
+				si.MemberPrice = models.NewMoneyFromDecimal(memberPrice).String()
+			}
+		}
+		skus = append(skus, si)
+	}
+
+	// 商品级会员价
+	var memberPriceFrom string
+	if memberLevelID > 0 && h.MemberLevelService != nil {
+		mp, _ := h.MemberLevelService.ResolveMemberPrice(memberLevelID, product.ID, 0, product.PriceAmount.Decimal)
+		if mp.LessThan(product.PriceAmount.Decimal) {
+			memberPriceFrom = models.NewMoneyFromDecimal(mp).String()
+		}
 	}
 
 	respondChannelSuccess(c, gin.H{
@@ -202,6 +253,7 @@ func (h *Handler) GetProductDetail(c *gin.Context) {
 		"description":           description,
 		"image_url":             imageURL,
 		"price_from":            product.PriceAmount.String(),
+		"member_price_from":     memberPriceFrom,
 		"currency":              currency,
 		"stock_status":          computeStockStatus(product.FulfillmentType, product.AutoStockAvailable, product.ManualStockTotal),
 		"stock_count":           computeStockCount(product.FulfillmentType, product.AutoStockAvailable, product.ManualStockTotal),
@@ -212,6 +264,48 @@ func (h *Handler) GetProductDetail(c *gin.Context) {
 		"purchase_note":         "",
 		"skus":                  skus,
 	})
+}
+
+// GetMemberLevels GET /api/v1/channel/member-levels?locale=zh-CN
+func (h *Handler) GetMemberLevels(c *gin.Context) {
+	locale := c.DefaultQuery("locale", "zh-CN")
+	defaultLocale := "zh-CN"
+
+	levels, err := h.MemberLevelService.ListActiveLevels()
+	if err != nil {
+		logger.Errorw("channel_member_levels_list", "error", err)
+		respondChannelError(c, 500, 500, "internal_error", "error.internal_error", err)
+		return
+	}
+
+	type levelItem struct {
+		ID                uint    `json:"id"`
+		Name              string  `json:"name"`
+		Slug              string  `json:"slug"`
+		Icon              string  `json:"icon"`
+		DiscountRate      float64 `json:"discount_rate"`
+		RechargeThreshold float64 `json:"recharge_threshold"`
+		SpendThreshold    float64 `json:"spend_threshold"`
+		IsDefault         bool    `json:"is_default"`
+		SortOrder         int     `json:"sort_order"`
+	}
+
+	items := make([]levelItem, 0, len(levels))
+	for _, l := range levels {
+		items = append(items, levelItem{
+			ID:                l.ID,
+			Name:              resolveLocalizedJSON(l.NameJSON, locale, defaultLocale),
+			Slug:              l.Slug,
+			Icon:              l.Icon,
+			DiscountRate:      l.DiscountRate.Decimal.InexactFloat64(),
+			RechargeThreshold: l.RechargeThreshold.Decimal.InexactFloat64(),
+			SpendThreshold:    l.SpendThreshold.Decimal.InexactFloat64(),
+			IsDefault:         l.IsDefault,
+			SortOrder:         l.SortOrder,
+		})
+	}
+
+	respondChannelSuccess(c, gin.H{"items": items})
 }
 
 func normalizeChannelManualFormSchema(schema models.JSON, locale, defaultLocale string) gin.H {
