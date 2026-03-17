@@ -34,8 +34,10 @@ func (h *Handler) GetCategories(c *gin.Context) {
 		ProductCount int64  `json:"product_count"`
 	}
 
+	// 统计每个分类的直接商品数
 	directCounts := make(map[uint]int64, len(categories))
-	visibleParentIDs := make(map[uint]struct{})
+	// 记录哪些 parentID 有子分类
+	hasChildren := make(map[uint]struct{})
 	for _, cat := range categories {
 		count, err := h.CategoryRepo.CountActiveProducts(fmt.Sprintf("%d", cat.ID))
 		if err != nil {
@@ -43,16 +45,33 @@ func (h *Handler) GetCategories(c *gin.Context) {
 			count = 0
 		}
 		directCounts[cat.ID] = count
-		if count > 0 && cat.ParentID != 0 {
-			visibleParentIDs[cat.ParentID] = struct{}{}
+		if cat.ParentID != 0 {
+			hasChildren[cat.ParentID] = struct{}{}
+		}
+	}
+
+	// 构建可见分类列表：
+	// - 一级分类：有直接商品 或 有子分类 → 可见
+	// - 二级分类：只要父分类可见就一律返回（由客户端决定是否显示空分类）
+	visibleParentIDs := make(map[uint]struct{})
+	for _, cat := range categories {
+		if cat.ParentID == 0 {
+			count := directCounts[cat.ID]
+			_, hasChild := hasChildren[cat.ID]
+			if count > 0 || hasChild {
+				visibleParentIDs[cat.ID] = struct{}{}
+			}
 		}
 	}
 
 	var items []categoryItem
 	for _, cat := range categories {
-		count := directCounts[cat.ID]
-		if count == 0 {
+		if cat.ParentID == 0 {
 			if _, ok := visibleParentIDs[cat.ID]; !ok {
+				continue
+			}
+		} else {
+			if _, ok := visibleParentIDs[cat.ParentID]; !ok {
 				continue
 			}
 		}
@@ -62,7 +81,7 @@ func (h *Handler) GetCategories(c *gin.Context) {
 			Name:         resolveLocalizedJSON(cat.NameJSON, locale, defaultLocale),
 			Icon:         cat.Icon,
 			Slug:         cat.Slug,
-			ProductCount: count,
+			ProductCount: directCounts[cat.ID],
 		})
 	}
 
@@ -83,8 +102,16 @@ func (h *Handler) GetProducts(c *gin.Context) {
 	if pageSize < 1 || pageSize > 20 {
 		pageSize = 5
 	}
+	exact := c.DefaultQuery("exact", "") == "1"
 
-	products, total, err := h.ProductService.ListPublic(categoryID, "", page, pageSize)
+	var products []models.Product
+	var total int64
+	var err error
+	if exact {
+		products, total, err = h.ProductService.ListPublicExact(categoryID, page, pageSize)
+	} else {
+		products, total, err = h.ProductService.ListPublic(categoryID, "", page, pageSize)
+	}
 	if err != nil {
 		logger.Errorw("channel_catalog_list_products", "error", err)
 		respondChannelError(c, 500, 500, "internal_error", "error.internal_error", err)
