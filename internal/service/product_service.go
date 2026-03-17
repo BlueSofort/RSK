@@ -81,6 +81,18 @@ func (s *ProductService) ListPublic(categoryID, search string, page, pageSize in
 	return s.repo.List(filter)
 }
 
+// ListPublicExact 获取公开商品列表（精确匹配分类，不展开父分类）
+func (s *ProductService) ListPublicExact(categoryID string, page, pageSize int) ([]models.Product, int64, error) {
+	filter := repository.ProductListFilter{
+		Page:         page,
+		PageSize:     pageSize,
+		CategoryID:   categoryID,
+		OnlyActive:   true,
+		WithCategory: true,
+	}
+	return s.repo.List(filter)
+}
+
 // GetPublicBySlug 获取公开商品详情
 func (s *ProductService) GetPublicBySlug(slug string) (*models.Product, error) {
 	product, err := s.repo.GetBySlug(slug, true)
@@ -254,6 +266,7 @@ func (s *ProductService) Update(id string, input CreateProductInput) (*models.Pr
 	}
 
 	product.CategoryID = input.CategoryID
+	product.Category = models.Category{}
 	product.Slug = input.Slug
 	product.SeoMetaJSON = models.JSON(input.SeoMetaJSON)
 	product.TitleJSON = models.JSON(input.TitleJSON)
