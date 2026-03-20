@@ -18,7 +18,7 @@
 
       <div class="theme-auth-card">
         <div class="mb-8 text-center">
-          <p class="text-xs font-semibold uppercase tracking-[0.22em] theme-text-accent">Dujiao-Next · D&N</p>
+          <p class="text-xs font-semibold uppercase tracking-[0.22em] theme-text-accent">{{ brandSiteName }}</p>
           <h1 class="mt-3 text-3xl font-black theme-text-primary">{{ t('auth.login.title') }}</h1>
           <p class="mt-2 text-sm theme-text-muted">{{ t('auth.login.subtitle') }}</p>
         </div>
@@ -158,6 +158,11 @@ const route = useRoute()
 const userAuthStore = useUserAuthStore()
 const appStore = useAppStore()
 const { t } = useI18n()
+
+const brandSiteName = computed(() => {
+  const siteName = String(appStore.config?.brand?.site_name || '').trim()
+  return siteName !== '' ? siteName : 'Dujiao-Next'
+})
 
 const email = ref('')
 const password = ref('')
