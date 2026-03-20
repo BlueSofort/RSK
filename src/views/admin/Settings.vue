@@ -28,6 +28,11 @@ type SiteScriptItem = {
 
 const siteScriptsMaxCount = 20
 const footerLinksMaxCount = 20
+
+const registrationForm = reactive({
+  registration_enabled: true,
+  email_verification_enabled: true,
+})
 type FooterLinkItem = {
   name: string
   url: string
@@ -335,13 +340,14 @@ const notifyErrorIfNeeded = (err: unknown, fallback: string) => {
 const fetchSettings = async () => {
   loading.value = true
   try {
-    const [siteRes, smtpRes, captchaRes, telegramRes, notificationRes, dashboardRes] = await Promise.all([
+    const [siteRes, smtpRes, captchaRes, telegramRes, notificationRes, dashboardRes, registrationRes] = await Promise.all([
       adminAPI.getSettings({ key: 'site_config' }),
       adminAPI.getSMTPSettings(),
       adminAPI.getCaptchaSettings(),
       adminAPI.getTelegramAuthSettings(),
       adminAPI.getNotificationCenterSettings(),
       adminAPI.getSettings({ key: 'dashboard_config' }),
+      adminAPI.getSettings({ key: 'registration_config' }),
     ])
 
     if (siteRes.data && siteRes.data.data) {
@@ -506,11 +512,27 @@ const fetchSettings = async () => {
       dashboardForm.ranking.top_channels_limit = clampNumber(dashRanking?.top_channels_limit, 1, 20, 5)
     }
 
+    if (registrationRes.data && registrationRes.data.data) {
+      const regData = registrationRes.data.data as Record<string, unknown>
+      registrationForm.registration_enabled = regData.registration_enabled !== false
+      registrationForm.email_verification_enabled = regData.email_verification_enabled !== false
+    }
+
   } catch (err) {
     notifyErrorIfNeeded(err, t('admin.settings.alerts.saveFailed'))
   } finally {
     loading.value = false
   }
+}
+
+const saveRegistrationSettings = async () => {
+  await adminAPI.updateSettings({
+    key: 'registration_config',
+    value: {
+      registration_enabled: registrationForm.registration_enabled,
+      email_verification_enabled: registrationForm.email_verification_enabled,
+    },
+  })
 }
 
 const saveSiteSettings = async () => {
@@ -633,6 +655,7 @@ const saveSettings = async () => {
     } else if (currentTab.value === 'dashboard') {
       await saveDashboardSettings()
     } else {
+      await saveRegistrationSettings()
       await saveSiteSettings()
     }
     notifySuccess(t('admin.settings.alerts.saveSuccess'))
@@ -687,6 +710,29 @@ onMounted(() => {
     </div>
 
     <div v-show="currentTab === 'basic'" class="space-y-6">
+      <div class="rounded-xl border border-border bg-card">
+        <div class="border-b border-border bg-muted/40 px-6 py-4">
+          <h2 class="text-lg font-semibold">{{ t('admin.settings.registration.title') }}</h2>
+          <p class="mt-1 text-xs text-muted-foreground">{{ t('admin.settings.registration.subtitle') }}</p>
+        </div>
+        <div class="space-y-4 p-6">
+          <div class="flex flex-col gap-3 rounded-lg border border-border bg-muted/20 px-4 py-3 sm:flex-row sm:items-center">
+            <input id="registration-enabled" v-model="registrationForm.registration_enabled" type="checkbox" class="h-4 w-4 accent-primary" />
+            <div>
+              <label for="registration-enabled" class="text-sm font-medium">{{ t('admin.settings.registration.registrationEnabled') }}</label>
+              <p class="text-xs text-muted-foreground">{{ t('admin.settings.registration.registrationEnabledDesc') }}</p>
+            </div>
+          </div>
+          <div class="flex flex-col gap-3 rounded-lg border border-border bg-muted/20 px-4 py-3 sm:flex-row sm:items-center">
+            <input id="email-verification-enabled" v-model="registrationForm.email_verification_enabled" type="checkbox" class="h-4 w-4 accent-primary" />
+            <div>
+              <label for="email-verification-enabled" class="text-sm font-medium">{{ t('admin.settings.registration.emailVerificationEnabled') }}</label>
+              <p class="text-xs text-muted-foreground">{{ t('admin.settings.registration.emailVerificationEnabledDesc') }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="rounded-xl border border-border bg-card">
         <div class="border-b border-border bg-muted/40 px-6 py-4">
           <h2 class="text-lg font-semibold">{{ t('admin.settings.brand.title') }}</h2>

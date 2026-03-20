@@ -1888,6 +1888,14 @@ const messages = {
           currency: '全站币种',
           currencyTip: '全站仅允许一种币种，商品价格自动继承该币种',
         },
+        registration: {
+          title: '注册配置',
+          subtitle: '控制前台用户注册行为',
+          registrationEnabled: '开放注册',
+          registrationEnabledDesc: '关闭后前台将无法注册新账号',
+          emailVerificationEnabled: '邮箱验证',
+          emailVerificationEnabledDesc: '关闭后注册时无需邮箱验证码',
+        },
         seo: {
           title: 'SEO 配置',
           subtitle: '设置网站标题、关键词和描述（{lang}）',
@@ -4460,6 +4468,14 @@ const messages = {
           currency: '全站幣種',
           currencyTip: '全站僅允許一種幣種，商品價格會自動繼承該幣種',
         },
+        registration: {
+          title: '註冊配置',
+          subtitle: '控制前台用戶註冊行為',
+          registrationEnabled: '開放註冊',
+          registrationEnabledDesc: '關閉後前台將無法註冊新帳號',
+          emailVerificationEnabled: '郵箱驗證',
+          emailVerificationEnabledDesc: '關閉後註冊時無需郵箱驗證碼',
+        },
         seo: {
           title: 'SEO 配置',
           subtitle: '設定網站標題、關鍵詞和描述（{lang}）',
@@ -7031,6 +7047,14 @@ const messages = {
           siteNamePlaceholder: 'e.g. Dujiao-Next',
           currency: 'Site currency',
           currencyTip: 'Only one currency is allowed across the site, and product prices inherit it automatically',
+        },
+        registration: {
+          title: 'Registration',
+          subtitle: 'Control front-end user registration behavior',
+          registrationEnabled: 'Enable Registration',
+          registrationEnabledDesc: 'When disabled, new users cannot register on the front-end',
+          emailVerificationEnabled: 'Email Verification',
+          emailVerificationEnabledDesc: 'When disabled, email verification code is not required during registration',
         },
         seo: {
           title: 'SEO Settings',
