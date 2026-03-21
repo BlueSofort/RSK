@@ -34,6 +34,7 @@ const (
 	PaymentProviderOfficial = "official"
 	PaymentProviderEpay     = "epay"
 	PaymentProviderEpusdt   = "epusdt"
+	PaymentProviderOkpay    = "okpay"
 	PaymentProviderTokenpay = "tokenpay"
 	PaymentProviderWallet   = "wallet"
 )
@@ -140,6 +141,12 @@ const (
 const (
 	EpusdtCallbackSuccess = "success"
 	EpusdtCallbackFail    = "fail"
+)
+
+// OKPAY 回调常量
+const (
+	OkpayCallbackSuccess = `{"status":"success"}`
+	OkpayCallbackFail    = `{"status":"fail"}`
 )
 
 // TokenPay 回调常量

@@ -36,6 +36,13 @@ func TestShouldUseGatewayOrderNo(t *testing.T) {
 			want: true,
 		},
 		{
+			name: "okpay",
+			channel: &models.PaymentChannel{
+				ProviderType: constants.PaymentProviderOkpay,
+			},
+			want: true,
+		},
+		{
 			name: "tokenpay",
 			channel: &models.PaymentChannel{
 				ProviderType: constants.PaymentProviderTokenpay,
@@ -197,6 +204,101 @@ func TestApplyProviderPaymentUsesGatewayOrderNoForEpusdt(t *testing.T) {
 	}
 	if payment.ProviderRef != "TRX-1001" {
 		t.Fatalf("provider ref = %s, want TRX-1001", payment.ProviderRef)
+	}
+}
+
+func TestApplyProviderPaymentUsesGatewayOrderNoForOkpay(t *testing.T) {
+	svc, db := setupPaymentServiceWalletTest(t)
+	now := time.Now()
+
+	order := &models.Order{
+		OrderNo:                 "DJTESTOKPAY001",
+		UserID:                  1,
+		Status:                  constants.OrderStatusPendingPayment,
+		Currency:                "CNY",
+		OriginalAmount:          models.NewMoneyFromDecimal(decimal.NewFromInt(88)),
+		DiscountAmount:          models.NewMoneyFromDecimal(decimal.Zero),
+		PromotionDiscountAmount: models.NewMoneyFromDecimal(decimal.Zero),
+		TotalAmount:             models.NewMoneyFromDecimal(decimal.NewFromInt(88)),
+		WalletPaidAmount:        models.NewMoneyFromDecimal(decimal.Zero),
+		OnlinePaidAmount:        models.NewMoneyFromDecimal(decimal.NewFromInt(88)),
+		RefundedAmount:          models.NewMoneyFromDecimal(decimal.Zero),
+		CreatedAt:               now,
+		UpdatedAt:               now,
+	}
+	if err := db.Create(order).Error; err != nil {
+		t.Fatalf("create order failed: %v", err)
+	}
+
+	var gotUniqueID string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			t.Fatalf("parse form failed: %v", err)
+		}
+		gotUniqueID = strings.TrimSpace(r.PostForm.Get("unique_id"))
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"status":"success","code":200,"data":{"order_id":"OKPAY-ORDER-1001","pay_url":"https://pay.example.com/okpay"}}`))
+	}))
+	defer server.Close()
+
+	channel := &models.PaymentChannel{
+		ProviderType:    constants.PaymentProviderOkpay,
+		ChannelType:     constants.PaymentChannelTypeUsdt,
+		InteractionMode: constants.PaymentInteractionQR,
+		FeeRate:         models.NewMoneyFromDecimal(decimal.Zero),
+		ConfigJSON: models.JSON{
+			"gateway_url":    server.URL,
+			"merchant_id":    "shop-1001",
+			"merchant_token": "token-1001",
+			"return_url":     "https://example.com/pay",
+			"callback_url":   "https://api.example.com/api/v1/payments/callback",
+		},
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	if err := db.Create(channel).Error; err != nil {
+		t.Fatalf("create channel failed: %v", err)
+	}
+
+	payment := &models.Payment{
+		OrderID:         order.ID,
+		ChannelID:       channel.ID,
+		ProviderType:    channel.ProviderType,
+		ChannelType:     channel.ChannelType,
+		InteractionMode: channel.InteractionMode,
+		Amount:          models.NewMoneyFromDecimal(decimal.RequireFromString("88.00")),
+		FeeRate:         models.NewMoneyFromDecimal(decimal.Zero),
+		FeeAmount:       models.NewMoneyFromDecimal(decimal.Zero),
+		Currency:        "CNY",
+		Status:          constants.PaymentStatusInitiated,
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	}
+	if err := db.Create(payment).Error; err != nil {
+		t.Fatalf("create payment failed: %v", err)
+	}
+
+	if err := svc.applyProviderPayment(CreatePaymentInput{
+		ClientIP: "127.0.0.1",
+		Context:  context.Background(),
+	}, order, channel, payment); err != nil {
+		t.Fatalf("applyProviderPayment failed: %v", err)
+	}
+
+	if payment.GatewayOrderNo == "" {
+		t.Fatalf("payment gateway order no should not be empty")
+	}
+	if gotUniqueID != payment.GatewayOrderNo {
+		t.Fatalf("okpay unique_id = %s, want %s", gotUniqueID, payment.GatewayOrderNo)
+	}
+	if payment.ProviderRef != "OKPAY-ORDER-1001" {
+		t.Fatalf("provider ref = %s, want OKPAY-ORDER-1001", payment.ProviderRef)
+	}
+	if payment.PayURL != "https://pay.example.com/okpay" {
+		t.Fatalf("unexpected pay url: %s", payment.PayURL)
+	}
+	if payment.QRCode != "https://pay.example.com/okpay" {
+		t.Fatalf("unexpected qr code: %s", payment.QRCode)
 	}
 }
 

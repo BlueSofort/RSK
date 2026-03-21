@@ -22,6 +22,9 @@ func (h *Handler) PaymentCallback(c *gin.Context) {
 	if handled := h.HandleWechatCallback(c); handled {
 		return
 	}
+	if handled := h.HandleOkpayCallback(c); handled {
+		return
+	}
 	if handled := h.HandleAlipayCallback(c); handled {
 		return
 	}

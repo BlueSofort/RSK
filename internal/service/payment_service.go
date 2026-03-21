@@ -685,7 +685,7 @@ func shouldUseGatewayOrderNo(channel *models.PaymentChannel) bool {
 		return false
 	}
 	switch strings.ToLower(strings.TrimSpace(channel.ProviderType)) {
-	case constants.PaymentProviderEpay, constants.PaymentProviderEpusdt, constants.PaymentProviderTokenpay:
+	case constants.PaymentProviderEpay, constants.PaymentProviderEpusdt, constants.PaymentProviderOkpay, constants.PaymentProviderTokenpay:
 		return true
 	default:
 		return false

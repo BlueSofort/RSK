@@ -12,6 +12,7 @@ import (
 	"github.com/dujiao-next/internal/payment/alipay"
 	"github.com/dujiao-next/internal/payment/epay"
 	"github.com/dujiao-next/internal/payment/epusdt"
+	"github.com/dujiao-next/internal/payment/okpay"
 	"github.com/dujiao-next/internal/payment/paypal"
 	"github.com/dujiao-next/internal/payment/stripe"
 	"github.com/dujiao-next/internal/payment/tokenpay"
@@ -171,6 +172,54 @@ func (s *PaymentService) applyProviderPayment(input CreatePaymentInput, order *m
 		}
 		if result.Raw != nil {
 			payment.ProviderPayload = models.JSON(result.Raw)
+		}
+		payment.UpdatedAt = time.Now()
+		if err := s.paymentRepo.Update(payment); err != nil {
+			return ErrPaymentUpdateFailed
+		}
+		return nil
+	case constants.PaymentProviderOkpay:
+		if !okpay.IsSupportedChannelType(channel.ChannelType) {
+			return fmt.Errorf("%w: unsupported channel_type %s", ErrPaymentChannelConfigInvalid, channel.ChannelType)
+		}
+		cfg, err := okpay.ParseConfig(channel.ConfigJSON)
+		if err != nil {
+			return fmt.Errorf("%w: %v", ErrPaymentChannelConfigInvalid, err)
+		}
+		if strings.TrimSpace(cfg.Coin) == "" {
+			cfg.Coin = okpay.ResolveCoin(channel.ChannelType)
+		}
+		if err := okpay.ValidateConfig(cfg); err != nil {
+			return fmt.Errorf("%w: %v", ErrPaymentChannelConfigInvalid, err)
+		}
+		returnURL := appendURLQuery(strings.TrimSpace(cfg.ReturnURL), buildOrderReturnQuery(order, "okpay_return", ""))
+		createResult, err := okpay.CreatePayment(gatewayCtx, cfg, okpay.CreateInput{
+			UniqueID:    providerOrderNo,
+			Name:        buildOrderSubject(order),
+			Amount:      payment.Amount.String(),
+			ReturnURL:   returnURL,
+			CallbackURL: strings.TrimSpace(cfg.CallbackURL),
+			Coin:        strings.TrimSpace(cfg.Coin),
+			Status:      strings.TrimSpace(cfg.Status),
+		})
+		if err != nil {
+			switch {
+			case errors.Is(err, okpay.ErrConfigInvalid):
+				return fmt.Errorf("%w: %v", ErrPaymentChannelConfigInvalid, err)
+			case errors.Is(err, okpay.ErrRequestFailed):
+				return ErrPaymentGatewayRequestFailed
+			case errors.Is(err, okpay.ErrResponseInvalid):
+				return ErrPaymentGatewayResponseInvalid
+			default:
+				return ErrPaymentGatewayRequestFailed
+			}
+		}
+		payment.PayURL = strings.TrimSpace(createResult.PayURL)
+		payment.QRCode = strings.TrimSpace(createResult.PayURL)
+		payment.Status = constants.PaymentStatusPending
+		payment.ProviderRef = pickFirstNonEmpty(strings.TrimSpace(createResult.OrderID), strings.TrimSpace(payment.ProviderRef), order.OrderNo)
+		if createResult.Raw != nil {
+			payment.ProviderPayload = models.JSON(createResult.Raw)
 		}
 		payment.UpdatedAt = time.Now()
 		if err := s.paymentRepo.Update(payment); err != nil {
@@ -443,6 +492,25 @@ func (s *PaymentService) ValidateChannel(channel *models.PaymentChannel) error {
 			return fmt.Errorf("%w: %v", ErrPaymentChannelConfigInvalid, err)
 		}
 		if err := epusdt.ValidateConfig(cfg); err != nil {
+			return fmt.Errorf("%w: %v", ErrPaymentChannelConfigInvalid, err)
+		}
+		return nil
+	case constants.PaymentProviderOkpay:
+		if !okpay.IsSupportedChannelType(channel.ChannelType) {
+			return fmt.Errorf("%w: unsupported channel_type %s", ErrPaymentChannelConfigInvalid, channel.ChannelType)
+		}
+		mode := strings.ToLower(strings.TrimSpace(channel.InteractionMode))
+		if mode != constants.PaymentInteractionQR && mode != constants.PaymentInteractionRedirect {
+			return ErrPaymentChannelConfigInvalid
+		}
+		cfg, err := okpay.ParseConfig(channel.ConfigJSON)
+		if err != nil {
+			return fmt.Errorf("%w: %v", ErrPaymentChannelConfigInvalid, err)
+		}
+		if strings.TrimSpace(cfg.Coin) == "" {
+			cfg.Coin = okpay.ResolveCoin(channel.ChannelType)
+		}
+		if err := okpay.ValidateConfig(cfg); err != nil {
 			return fmt.Errorf("%w: %v", ErrPaymentChannelConfigInvalid, err)
 		}
 		return nil
