@@ -12,9 +12,11 @@ import (
 type ApiCredentialRepository interface {
 	GetByID(id uint) (*models.ApiCredential, error)
 	GetByUserID(userID uint) (*models.ApiCredential, error)
+	GetAnyByUserID(userID uint) (*models.ApiCredential, error)
 	GetByApiKey(apiKey string) (*models.ApiCredential, error)
 	Create(cred *models.ApiCredential) error
 	Update(cred *models.ApiCredential) error
+	UpdateAny(cred *models.ApiCredential) error
 	Delete(id uint) error
 	List(filter ApiCredentialListFilter) ([]models.ApiCredential, int64, error)
 }
@@ -61,6 +63,18 @@ func (r *GormApiCredentialRepository) GetByUserID(userID uint) (*models.ApiCrede
 	return &cred, nil
 }
 
+// GetAnyByUserID 根据用户 ID 获取，包含软删除记录。
+func (r *GormApiCredentialRepository) GetAnyByUserID(userID uint) (*models.ApiCredential, error) {
+	var cred models.ApiCredential
+	if err := r.db.Unscoped().Where("user_id = ?", userID).First(&cred).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &cred, nil
+}
+
 // GetByApiKey 根据 API Key 获取（预加载 User 用于状态校验）
 func (r *GormApiCredentialRepository) GetByApiKey(apiKey string) (*models.ApiCredential, error) {
 	var cred models.ApiCredential
@@ -81,6 +95,11 @@ func (r *GormApiCredentialRepository) Create(cred *models.ApiCredential) error {
 // Update 更新凭证
 func (r *GormApiCredentialRepository) Update(cred *models.ApiCredential) error {
 	return r.db.Save(cred).Error
+}
+
+// UpdateAny 更新凭证，包含软删除记录。
+func (r *GormApiCredentialRepository) UpdateAny(cred *models.ApiCredential) error {
+	return r.db.Unscoped().Save(cred).Error
 }
 
 // Delete 软删除凭证

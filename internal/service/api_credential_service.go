@@ -9,6 +9,7 @@ import (
 	"github.com/dujiao-next/internal/constants"
 	"github.com/dujiao-next/internal/models"
 	"github.com/dujiao-next/internal/repository"
+	"gorm.io/gorm"
 )
 
 var (
@@ -30,21 +31,28 @@ func NewApiCredentialService(credRepo repository.ApiCredentialRepository) *ApiCr
 
 // Apply 用户申请 API 对接权限
 func (s *ApiCredentialService) Apply(userID uint) (*models.ApiCredential, error) {
-	existing, err := s.credRepo.GetByUserID(userID)
+	existing, err := s.credRepo.GetAnyByUserID(userID)
 	if err != nil {
 		return nil, err
 	}
 
 	if existing != nil {
+		if existing.DeletedAt.Valid {
+			resetApiCredentialForReapply(existing)
+			if err := s.credRepo.UpdateAny(existing); err != nil {
+				return nil, err
+			}
+			return existing, nil
+		}
+
 		switch existing.Status {
 		case constants.ApiCredentialStatusPendingReview:
 			return nil, ErrApiCredentialPendingExist
 		case constants.ApiCredentialStatusApproved:
 			return nil, ErrApiCredentialExists
 		case constants.ApiCredentialStatusRejected:
-			// 允许重新申请
-			existing.Status = constants.ApiCredentialStatusPendingReview
-			existing.RejectReason = ""
+			// 允许重新申请，并重置旧审批与凭证痕迹。
+			resetApiCredentialForReapply(existing)
 			if err := s.credRepo.Update(existing); err != nil {
 				return nil, err
 			}
@@ -62,6 +70,17 @@ func (s *ApiCredentialService) Apply(userID uint) (*models.ApiCredential, error)
 		return nil, err
 	}
 	return cred, nil
+}
+
+func resetApiCredentialForReapply(cred *models.ApiCredential) {
+	cred.ApiKey = ""
+	cred.ApiSecret = ""
+	cred.Status = constants.ApiCredentialStatusPendingReview
+	cred.RejectReason = ""
+	cred.ApprovedAt = nil
+	cred.LastUsedAt = nil
+	cred.IsActive = false
+	cred.DeletedAt = gorm.DeletedAt{}
 }
 
 // Approve admin 审核通过
