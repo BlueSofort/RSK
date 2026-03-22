@@ -473,6 +473,65 @@ func TestProductServiceListPublicSortsSKUsDescending(t *testing.T) {
 	}
 }
 
+func TestProductServiceGetAdminByIDIncludesInactiveSKUs(t *testing.T) {
+	svc, db := newProductServiceForTest(t)
+
+	product := models.Product{
+		CategoryID:  1,
+		Slug:        "admin-all-skus-product",
+		TitleJSON:   models.JSON{"zh-CN": "admin-all-skus-product"},
+		PriceAmount: models.NewMoneyFromDecimal(decimal.NewFromInt(10)),
+		IsActive:    true,
+	}
+	if err := db.Create(&product).Error; err != nil {
+		t.Fatalf("create product failed: %v", err)
+	}
+
+	activeSKU := models.ProductSKU{
+		ProductID:      product.ID,
+		SKUCode:        "ACTIVE",
+		SpecValuesJSON: models.JSON{},
+		PriceAmount:    models.NewMoneyFromDecimal(decimal.NewFromInt(10)),
+		IsActive:       true,
+		SortOrder:      10,
+	}
+	inactiveSKU := models.ProductSKU{
+		ProductID:      product.ID,
+		SKUCode:        "INACTIVE",
+		SpecValuesJSON: models.JSON{},
+		PriceAmount:    models.NewMoneyFromDecimal(decimal.NewFromInt(20)),
+		IsActive:       false,
+		SortOrder:      1,
+	}
+	if err := db.Create(&activeSKU).Error; err != nil {
+		t.Fatalf("create active sku failed: %v", err)
+	}
+	if err := db.Create(&inactiveSKU).Error; err != nil {
+		t.Fatalf("create inactive sku failed: %v", err)
+	}
+	inactiveSKU.IsActive = false
+	if err := db.Save(&inactiveSKU).Error; err != nil {
+		t.Fatalf("persist inactive sku failed: %v", err)
+	}
+
+	got, err := svc.GetAdminByID(strconv.FormatUint(uint64(product.ID), 10))
+	if err != nil {
+		t.Fatalf("get admin product failed: %v", err)
+	}
+	if got == nil {
+		t.Fatal("expected product, got nil")
+	}
+	if len(got.SKUs) != 2 {
+		t.Fatalf("expected 2 skus for admin detail, got %d", len(got.SKUs))
+	}
+	if got.SKUs[0].SKUCode != "ACTIVE" || !got.SKUs[0].IsActive {
+		t.Fatalf("expected first sku to be active ACTIVE, got %+v", got.SKUs[0])
+	}
+	if got.SKUs[1].SKUCode != "INACTIVE" || got.SKUs[1].IsActive {
+		t.Fatalf("expected second sku to be inactive INACTIVE, got %+v", got.SKUs[1])
+	}
+}
+
 func newProductServiceForTest(t *testing.T) (*ProductService, *gorm.DB) {
 	t.Helper()
 

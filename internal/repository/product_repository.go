@@ -16,6 +16,7 @@ type ProductRepository interface {
 	List(filter ProductListFilter) ([]models.Product, int64, error)
 	GetBySlug(slug string, onlyActive bool) (*models.Product, error)
 	GetByID(id string) (*models.Product, error)
+	GetAdminByID(id string) (*models.Product, error)
 	ListByIDs(ids []uint) ([]models.Product, error)
 	Create(product *models.Product) error
 	Update(product *models.Product) error
@@ -186,6 +187,22 @@ func (r *GormProductRepository) GetByID(id string) (*models.Product, error) {
 	if err := r.db.Preload("Category").
 		Preload("SKUs", func(db *gorm.DB) *gorm.DB {
 			return db.Where("is_active = ?", true).Order("sort_order DESC, id ASC")
+		}).
+		First(&product, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &product, nil
+}
+
+// GetAdminByID 根据 ID 获取后台商品详情，包含全部 SKU
+func (r *GormProductRepository) GetAdminByID(id string) (*models.Product, error) {
+	var product models.Product
+	if err := r.db.Preload("Category").
+		Preload("SKUs", func(db *gorm.DB) *gorm.DB {
+			return db.Order("sort_order DESC, id ASC")
 		}).
 		First(&product, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

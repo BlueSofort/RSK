@@ -122,7 +122,7 @@ func (s *ProductService) ListAdmin(categoryID, search, fulfillmentType, manualSt
 
 // GetAdminByID 获取后台商品详情
 func (s *ProductService) GetAdminByID(id string) (*models.Product, error) {
-	product, err := s.repo.GetByID(id)
+	product, err := s.repo.GetAdminByID(id)
 	if err != nil {
 		return nil, err
 	}
