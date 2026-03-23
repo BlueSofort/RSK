@@ -64,7 +64,7 @@
               <h2 class="text-xl font-bold theme-text-primary">{{ paymentResultTitle }}</h2>
               <p class="text-sm theme-text-muted mt-1">{{ paymentGuideTip }}</p>
               <div class="mt-2 text-xs theme-text-muted">
-                {{ t('payment.methodLabel') }}：{{ resultChannelName }}<span v-if="resultChannelType"> ({{ resultChannelType }})</span>
+                {{ t('payment.methodLabel') }}：{{ resultChannelName }}
               </div>
             </div>
             <div class="flex flex-wrap items-center gap-2">
@@ -123,33 +123,46 @@
                 <div class="text-sm font-semibold theme-text-primary mt-1">{{ order.order_no }}</div>
                 <div class="mt-3 text-xs theme-text-muted">{{ t('payment.orderStatus') }}：{{ statusLabel(order.status) }}</div>
                 <div class="mt-2 text-xs theme-text-muted">
-                  {{ t('payment.methodLabel') }}：{{ resultChannelName }}<span v-if="resultChannelType"> ({{ resultChannelType }})</span>
+                  {{ t('payment.methodLabel') }}：{{ resultChannelName }}
                 </div>
               </div>
               <div class="theme-surface-soft border rounded-2xl p-4">
-              <div class="text-xs theme-text-muted">{{ t('orderDetail.amountTotal') }}</div>
-              <div class="text-lg font-bold theme-text-primary mt-1">{{ formatMoney(order.total_amount,
-                order.currency) }}</div>
-              <div class="mt-2 text-xs theme-text-muted">
-                {{ t('payment.feeRateLabel') }}：{{ feeRateDisplay }}
+                <div class="text-xs uppercase tracking-wider theme-text-muted">{{ t('payment.payableAmountLabel') }}</div>
+                <div class="mt-1 text-2xl font-bold theme-text-primary">{{ payableAmountDisplay }}</div>
+                <div class="mt-4 space-y-2 text-xs">
+                  <div class="flex items-center justify-between gap-4">
+                    <span class="theme-text-muted">{{ t('orderDetail.amountTotal') }}</span>
+                    <span class="font-semibold theme-text-primary">{{ formatMoney(order.total_amount, order.currency) }}</span>
+                  </div>
+                  <div class="flex items-center justify-between gap-4">
+                    <span class="theme-text-muted">{{ t('payment.feeRateLabel') }}</span>
+                    <span class="font-medium theme-text-primary">{{ feeRateDisplay }}</span>
+                  </div>
+                  <div class="flex items-center justify-between gap-4">
+                    <span class="theme-text-muted">{{ t('payment.fixedFeeLabel') }}</span>
+                    <span class="font-medium theme-text-primary">{{ fixedFeeDisplay }}</span>
+                  </div>
+                  <div class="flex items-center justify-between gap-4">
+                    <span class="theme-text-muted">{{ t('payment.feeAmountLabel') }}</span>
+                    <span class="font-medium theme-text-primary">{{ feeAmountDisplay }}</span>
+                  </div>
+                  <div v-if="paymentResult.wallet_paid_amount !== undefined" class="flex items-center justify-between gap-4">
+                    <span class="theme-text-muted">{{ t('payment.walletDeductLabel') }}</span>
+                    <span class="font-medium theme-text-primary">{{ paymentWalletPaidDisplay }}</span>
+                  </div>
+                  <div v-if="paymentResult.online_pay_amount !== undefined" class="flex items-center justify-between gap-4">
+                    <span class="theme-text-muted">{{ t('payment.onlinePayLabel') }}</span>
+                    <span class="font-medium theme-text-primary">{{ paymentOnlinePayDisplay }}</span>
+                  </div>
+                </div>
+                <div v-if="showCountdown || pollingActive" class="mt-4 border-t border-gray-100 pt-3 text-xs dark:border-white/5">
+                  <div v-if="showCountdown" class="flex items-center justify-between gap-4">
+                    <span class="theme-text-muted">{{ t('payment.countdownLabel') }}</span>
+                    <span class="font-mono font-medium theme-text-primary">{{ countdownText }}</span>
+                  </div>
+                  <div v-if="pollingActive" class="mt-2 theme-text-muted">{{ t('payment.pollingHint') }}</div>
+                </div>
               </div>
-              <div class="mt-1 text-xs theme-text-muted">
-                {{ t('payment.feeAmountLabel') }}：{{ feeAmountDisplay }}
-              </div>
-            <div class="mt-1 text-sm font-semibold theme-text-primary">
-                {{ t('payment.payableAmountLabel') }}：{{ payableAmountDisplay }}
-              </div>
-              <div v-if="paymentResult.wallet_paid_amount !== undefined" class="mt-1 text-xs theme-text-muted">
-                {{ t('payment.walletDeductLabel') }}：{{ paymentWalletPaidDisplay }}
-              </div>
-              <div v-if="paymentResult.online_pay_amount !== undefined" class="mt-1 text-xs theme-text-muted">
-                {{ t('payment.onlinePayLabel') }}：{{ paymentOnlinePayDisplay }}
-              </div>
-              <div v-if="showCountdown" class="mt-2 text-xs theme-text-muted">
-                {{ t('payment.countdownLabel') }}：<span class="font-mono">{{ countdownText }}</span>
-              </div>
-              <div v-if="pollingActive" class="mt-2 text-xs theme-text-muted">{{ t('payment.pollingHint') }}</div>
-            </div>
               <div v-if="paymentResult.expires_at"
                 class="theme-surface-soft border rounded-2xl p-4 text-xs theme-text-muted">
                 {{ t('payment.expiresAt') }}：{{ formatDate(paymentResult.expires_at) }}
@@ -163,28 +176,48 @@
         <div class="lg:col-span-2 space-y-6">
           <div class="theme-panel rounded-2xl p-6">
             <h2 class="text-lg font-bold mb-4 theme-text-primary">{{ t('payment.orderInfo') }}</h2>
-            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
               <div>
                 <div class="text-xs uppercase tracking-wider theme-text-muted">{{ t('payment.orderNo') }}</div>
                 <div class="text-sm font-semibold theme-text-primary mt-1">{{ order.order_no }}</div>
               <div class="text-xs theme-text-muted mt-2">{{ t('orderDetail.createdAtLabel') }}：{{
                   formatDate(order.created_at) }}</div>
             </div>
-            <div class="flex flex-col items-start md:items-end gap-2">
-              <div class="text-xs uppercase tracking-wider theme-text-muted">{{ t('orderDetail.amountTotal') }}</div>
-              <div class="text-lg font-bold theme-text-primary">{{ formatMoney(order.total_amount,
-                order.currency) }}</div>
-              <span class="text-xs theme-text-muted">{{ t('payment.feeRateLabel') }}：{{ feeRateDisplay }}</span>
-              <span class="text-xs theme-text-muted">{{ t('payment.feeAmountLabel') }}：{{ feeAmountDisplay }}</span>
-              <span class="text-sm font-semibold theme-text-primary">{{ t('payment.payableAmountLabel') }}：{{ payableAmountDisplay }}</span>
-              <span v-if="showBalanceOption && useBalance" class="text-xs theme-text-muted">
-                {{ t('payment.walletDeductLabel') }}：{{ expectedWalletPaidDisplay }}
-              </span>
-              <span v-if="showBalanceOption && useBalance" class="text-xs theme-text-muted">
-                {{ t('payment.onlinePayLabel') }}：{{ expectedOnlinePayDisplay }}
-              </span>
-              <span class="text-xs theme-text-muted">{{ t('payment.orderStatus') }}：{{
-                  statusLabel(order.status) }}</span>
+            <div class="w-full md:w-auto md:min-w-[280px] theme-surface-soft border rounded-2xl p-4">
+              <div class="text-xs uppercase tracking-wider theme-text-muted md:text-right">{{ t('payment.payableAmountLabel') }}</div>
+              <div class="mt-1 text-2xl font-bold theme-text-primary md:text-right">{{ payableAmountDisplay }}</div>
+              <div class="mt-4 space-y-2 text-xs">
+                <div class="flex items-center justify-between gap-4">
+                  <span class="theme-text-muted">{{ t('orderDetail.amountTotal') }}</span>
+                  <span class="font-semibold theme-text-primary">{{ formatMoney(order.total_amount, order.currency) }}</span>
+                </div>
+                <div class="flex items-center justify-between gap-4">
+                  <span class="theme-text-muted">{{ t('payment.feeRateLabel') }}</span>
+                  <span class="font-medium theme-text-primary">{{ feeRateDisplay }}</span>
+                </div>
+                <div class="flex items-center justify-between gap-4">
+                  <span class="theme-text-muted">{{ t('payment.fixedFeeLabel') }}</span>
+                  <span class="font-medium theme-text-primary">{{ fixedFeeDisplay }}</span>
+                </div>
+                <div class="flex items-center justify-between gap-4">
+                  <span class="theme-text-muted">{{ t('payment.feeAmountLabel') }}</span>
+                  <span class="font-medium theme-text-primary">{{ feeAmountDisplay }}</span>
+                </div>
+                <div v-if="showBalanceOption && useBalance" class="flex items-center justify-between gap-4">
+                  <span class="theme-text-muted">{{ t('payment.walletDeductLabel') }}</span>
+                  <span class="font-medium theme-text-primary">{{ expectedWalletPaidDisplay }}</span>
+                </div>
+                <div v-if="showBalanceOption && useBalance" class="flex items-center justify-between gap-4">
+                  <span class="theme-text-muted">{{ t('payment.onlinePayLabel') }}</span>
+                  <span class="font-medium theme-text-primary">{{ expectedOnlinePayDisplay }}</span>
+                </div>
+              </div>
+              <div class="mt-4 border-t border-gray-100 pt-3 text-xs dark:border-white/5">
+                <div class="flex items-center justify-between gap-4">
+                  <span class="theme-text-muted">{{ t('payment.orderStatus') }}</span>
+                  <span class="font-medium theme-text-primary">{{ statusLabel(order.status) }}</span>
+                </div>
+              </div>
             </div>
             </div>
             <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
@@ -274,7 +307,6 @@
                 <div>
                   {{ t('payment.cachedHint', {
                     channel: cachedChannelName,
-                    type: cachedChannelType,
                   }) }}
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
@@ -298,8 +330,10 @@
                       {{ t('payment.selected') }}
                     </span>
                   </div>
-                  <div class="text-xs theme-text-muted mt-1">{{ providerTypeLabel(channel.provider_type) }} / {{
-                    channelTypeLabel(channel.channel_type) }}</div>
+                  <div class="mt-2 space-y-1 text-xs theme-text-muted">
+                    <div>{{ t('payment.feeLabel') }}：{{ formatChannelFeeRate(channel) }}</div>
+                    <div>{{ t('payment.fixedFeeLabel') }}：{{ formatChannelFixedFee(channel) }}</div>
+                  </div>
               </button>
               </div>
               <div v-else-if="showBalanceOption" class="text-sm theme-text-muted">
@@ -315,8 +349,7 @@
             class="theme-panel rounded-2xl p-6">
             <h2 class="text-lg font-bold mb-4 theme-text-primary">{{ t('payment.infoTitle') }}</h2>
             <div class="text-sm theme-text-secondary space-y-2">
-              <div>{{ t('payment.methodLabel') }}：{{ channelTypeLabel(paymentResult.channel_type) }} ({{
-                providerTypeLabel(paymentResult.provider_type) }})</div>
+              <div>{{ t('payment.methodLabel') }}：{{ resultChannelName }}</div>
               <div>{{ t('payment.interactionLabel') }}：{{ interactionLabel }}</div>
               <div v-if="paymentResult.expires_at">{{ t('payment.expiresAt') }}：{{ formatDate(paymentResult.expires_at)
                 }}</div>
@@ -381,8 +414,7 @@
             v-if="selectedChannel"
             class="mb-4 rounded-lg border p-3 text-xs theme-alert-success"
           >
-            <div class="font-semibold">{{ t('payment.methodLabel') }}：{{ selectedChannel.name }}</div>
-            <div class="mt-1">{{ providerTypeLabel(selectedChannel.provider_type) }} / {{ channelTypeLabel(selectedChannel.channel_type) }}</div>
+            <div class="font-semibold">{{ t('payment.methodLabel') }}：{{ selectedChannelName }}</div>
           </div>
           <div
             v-else-if="!requiresOnlineChannel && !orderExpired && !orderCanceled"
@@ -544,34 +576,13 @@ const selectedChannel = computed(() => findChannelByID(selectedChannelId.value))
 
 const cachedChannel = computed(() => findChannelByID(cachedPayment.value?.channel_id))
 
-const cachedChannelType = computed(() => {
-  if (cachedChannel.value?.channel_type) {
-    return channelTypeLabel(cachedChannel.value.channel_type)
-  }
-  if (cachedPayment.value?.channel_type) {
-    return channelTypeLabel(cachedPayment.value.channel_type)
-  }
-  return '-'
-})
+const selectedChannelName = computed(() => resolveChannelName(selectedChannel.value, selectedChannel.value?.channel_type))
 
-const cachedChannelName = computed(() => {
-  if (cachedChannel.value?.name) return cachedChannel.value.name
-  if (cachedPayment.value?.channel_type) return channelTypeLabel(cachedPayment.value.channel_type)
-  return '-'
-})
+const cachedChannelName = computed(() => resolveChannelName(cachedChannel.value, cachedPayment.value?.channel_type))
 
 const resultChannel = computed(() => findChannelByID(paymentResult.value?.channel_id))
 
-const resultChannelName = computed(() => {
-  if (resultChannel.value?.name) return resultChannel.value.name
-  if (paymentResult.value?.channel_type) return channelTypeLabel(paymentResult.value.channel_type)
-  return '-'
-})
-
-const resultChannelType = computed(() => {
-  if (paymentResult.value?.channel_type) return channelTypeLabel(paymentResult.value.channel_type)
-  return ''
-})
+const resultChannelName = computed(() => resolveChannelName(resultChannel.value, paymentResult.value?.channel_type))
 
 const interactionLabel = computed(() => {
   if (!paymentResult.value?.interaction_mode) return '-'
@@ -763,6 +774,13 @@ const feeAmountDisplay = computed(() => {
   const value = feeAmountCents.value
   if (value === null) return '-'
   return formatMoney(centsToAmount(value), order.value?.currency)
+})
+const fixedFeeDisplay = computed(() => {
+  const fixed = paymentResult.value?.fixed_fee !== undefined ? paymentResult.value.fixed_fee : selectedChannel.value?.fixed_fee
+  if (fixed === undefined || fixed === null || fixed === '') {
+    return formatMoney('0.00', order.value?.currency)
+  }
+  return formatMoney(String(fixed), order.value?.currency)
 })
 const payableAmountDisplay = computed(() => {
   if (paymentResult.value?.amount !== undefined && paymentResult.value?.amount !== null && paymentResult.value?.amount !== '') {
@@ -1277,17 +1295,6 @@ const orderItemSkuText = (item: any) => {
 
 const fulfillmentTypeLabelText = (type: string) => fulfillmentTypeLabel(t, type, 'orderDetail')
 
-const providerTypeLabel = (value?: string) => {
-  const map: Record<string, string> = {
-    official: t('payment.providerTypes.official'),
-    epay: t('payment.providerTypes.epay'),
-    epusdt: t('payment.providerTypes.epusdt'),
-    tokenpay: t('payment.providerTypes.tokenpay'),
-  }
-  if (!value) return '-'
-  return map[value] || value
-}
-
 const channelTypeLabel = (value?: string) => {
   const map: Record<string, string> = {
     wechat: t('payment.channelTypes.wechat'),
@@ -1303,6 +1310,27 @@ const channelTypeLabel = (value?: string) => {
   }
   if (!value) return '-'
   return map[value] || value
+}
+
+const resolveChannelName = (channel?: any, fallbackChannelType?: unknown) => {
+  if (channel?.name) return channel.name
+  const channelType = String(fallbackChannelType || '').trim()
+  if (channelType) return channelTypeLabel(channelType)
+  return '-'
+}
+
+const formatChannelFeeRate = (channel?: any) => {
+  const basisPoints = rateToBasisPoints(channel?.fee_rate)
+  if (basisPoints === null) return '0.00%'
+  return `${basisPointsToPercent(basisPoints)}%`
+}
+
+const formatChannelFixedFee = (channel?: any) => {
+  const fixedFee = channel?.fixed_fee
+  if (fixedFee === null || fixedFee === undefined || fixedFee === '') {
+    return formatMoney('0.00', order.value?.currency)
+  }
+  return formatMoney(String(fixedFee), order.value?.currency)
 }
 
 onMounted(() => {
