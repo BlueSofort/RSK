@@ -2,8 +2,12 @@
 import { reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { adminAPI } from '@/api/admin'
+import type { AdminProduct } from '@/api/types'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { getLocalizedText } from '@/utils/format'
 import { notifyError, notifySuccess } from '@/utils/notify'
 
 const { t } = useI18n()
@@ -17,6 +21,8 @@ type NotificationSceneTemplate = Record<SupportedLanguage, NotificationLocalized
 interface NotificationData {
   default_locale: string
   dedupe_ttl_seconds: number
+  inventory_alert_interval_seconds: number
+  ignored_product_ids_text: string
   channels: {
     email: {
       enabled: boolean
@@ -51,6 +57,11 @@ const emit = defineEmits<{
 }>()
 
 const submitting = ref(false)
+const productOptionsLoading = ref(false)
+const productKeyword = ref('')
+const productOptions = ref<AdminProduct[]>([])
+const selectedIgnoredProductValue = ref('')
+const ignoredProducts = ref<Array<{ id: number; label: string }>>([])
 
 const createNotificationLocalizedTemplate = (): NotificationLocalizedTemplate => ({ title: '', body: '' })
 const createNotificationSceneTemplate = (): NotificationSceneTemplate => ({
@@ -71,6 +82,8 @@ const deepCloneTemplate = (src: NotificationSceneTemplate): NotificationSceneTem
 const form = reactive({
   default_locale: 'zh-CN',
   dedupe_ttl_seconds: 300,
+  inventory_alert_interval_seconds: 1800,
+  ignored_product_ids_text: '',
   channels: {
     email: {
       enabled: false,
@@ -98,6 +111,8 @@ const form = reactive({
 const syncFromProps = () => {
   form.default_locale = props.data.default_locale
   form.dedupe_ttl_seconds = props.data.dedupe_ttl_seconds
+  form.inventory_alert_interval_seconds = props.data.inventory_alert_interval_seconds
+  form.ignored_product_ids_text = props.data.ignored_product_ids_text
   form.channels.email.enabled = props.data.channels.email.enabled
   form.channels.email.recipients_text = props.data.channels.email.recipients_text
   form.channels.telegram.enabled = props.data.channels.telegram.enabled
@@ -111,15 +126,24 @@ const syncFromProps = () => {
 
 syncFromProps()
 
-watch(() => props.data, () => {
-  syncFromProps()
-}, { deep: true })
-
 const splitRecipients = (raw: string) => {
   return raw
     .split(/\r?\n|,/)
     .map((item) => item.trim())
     .filter((item) => item !== '')
+}
+
+const splitNumericIDs = (raw: string) => {
+  const seen = new Set<number>()
+  return raw
+    .split(/\r?\n|,/)
+    .map((item) => Number(item.trim()))
+    .filter((item) => Number.isInteger(item) && item > 0)
+    .filter((item) => {
+      if (seen.has(item)) return false
+      seen.add(item)
+      return true
+    })
 }
 
 const notifyErrorIfNeeded = (err: unknown, fallback: string) => {
@@ -128,12 +152,94 @@ const notifyErrorIfNeeded = (err: unknown, fallback: string) => {
   notifyError(known?.message || fallback)
 }
 
+const buildProductLabel = (product: AdminProduct) => {
+  const name = getLocalizedText(product.title || {})
+  return name ? `#${product.id} ${name}` : `#${product.id}`
+}
+
+const syncIgnoredProductIDsText = () => {
+  form.ignored_product_ids_text = ignoredProducts.value.map((item) => String(item.id)).join('\n')
+}
+
+const syncIgnoredProductsFromText = async () => {
+  const ids = splitNumericIDs(form.ignored_product_ids_text)
+  if (ids.length === 0) {
+    ignoredProducts.value = []
+    return
+  }
+  const results = await Promise.all(
+    ids.map(async (id) => {
+      try {
+        const response = await adminAPI.getProduct(id)
+        const product = response.data?.data
+        if (!product) return { id, label: `#${id}` }
+        return { id, label: buildProductLabel(product) }
+      } catch {
+        return { id, label: `#${id}` }
+      }
+    }),
+  )
+  ignoredProducts.value = results
+}
+
+const searchProducts = async () => {
+  productOptionsLoading.value = true
+  try {
+    const response = await adminAPI.getProducts({
+      page: 1,
+      page_size: 20,
+      search: productKeyword.value.trim() || undefined,
+    })
+    productOptions.value = Array.isArray(response.data?.data) ? response.data.data : []
+  } catch (err) {
+    notifyErrorIfNeeded(err, t('admin.settings.notification.inventory.searchFailed'))
+  } finally {
+    productOptionsLoading.value = false
+  }
+}
+
+const addIgnoredProduct = () => {
+  const productID = Number(selectedIgnoredProductValue.value)
+  if (!Number.isInteger(productID) || productID <= 0) {
+    notifyError(t('admin.settings.notification.inventory.productRequired'))
+    return
+  }
+  if (ignoredProducts.value.some((item) => item.id === productID)) {
+    return
+  }
+  const product = productOptions.value.find((item) => item.id === productID)
+  ignoredProducts.value = [
+    ...ignoredProducts.value,
+    {
+      id: productID,
+      label: product ? buildProductLabel(product) : `#${productID}`,
+    },
+  ]
+  syncIgnoredProductIDsText()
+  selectedIgnoredProductValue.value = ''
+}
+
+const removeIgnoredProduct = (productID: number) => {
+  ignoredProducts.value = ignoredProducts.value.filter((item) => item.id !== productID)
+  syncIgnoredProductIDsText()
+}
+
+void syncIgnoredProductsFromText()
+
+watch(() => props.data, () => {
+  syncFromProps()
+  void syncIgnoredProductsFromText()
+}, { deep: true })
+
 const save = async () => {
   submitting.value = true
   try {
+    syncIgnoredProductIDsText()
     const payload = {
       default_locale: form.default_locale,
       dedupe_ttl_seconds: Number(form.dedupe_ttl_seconds),
+      inventory_alert_interval_seconds: Number(form.inventory_alert_interval_seconds),
+      ignored_product_ids: splitNumericIDs(form.ignored_product_ids_text),
       channels: {
         email: {
           enabled: form.channels.email.enabled,
@@ -178,14 +284,71 @@ defineExpose({ save, submitting })
           <div class="space-y-2">
             <label class="text-xs font-medium text-muted-foreground">{{ t('admin.settings.notification.defaultLocale') }}</label>
             <select v-model="form.default_locale" class="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
-              <option value="zh-CN">zh-CN</option>
-              <option value="zh-TW">zh-TW</option>
-              <option value="en-US">en-US</option>
+              <option value="zh-CN">{{ t('admin.common.lang.zhCN') }}</option>
+              <option value="zh-TW">{{ t('admin.common.lang.zhTW') }}</option>
+              <option value="en-US">{{ t('admin.common.lang.enUS') }}</option>
             </select>
           </div>
           <div class="space-y-2">
             <label class="text-xs font-medium text-muted-foreground">{{ t('admin.settings.notification.dedupeTTLSeconds') }}</label>
             <Input v-model.number="form.dedupe_ttl_seconds" type="number" min="30" max="86400" />
+          </div>
+        </div>
+
+        <div class="rounded-xl border border-border bg-muted/20 p-4">
+          <h3 class="text-sm font-semibold">{{ t('admin.settings.notification.inventory.title') }}</h3>
+          <div class="mt-4 grid grid-cols-1 gap-6 md:grid-cols-2">
+            <div class="space-y-2">
+              <label class="text-xs font-medium text-muted-foreground">{{ t('admin.settings.notification.inventory.intervalSeconds') }}</label>
+              <Input v-model.number="form.inventory_alert_interval_seconds" type="number" min="60" max="604800" />
+              <p class="text-xs text-muted-foreground">{{ t('admin.settings.notification.inventory.intervalHint') }}</p>
+            </div>
+            <div class="space-y-2">
+              <label class="text-xs font-medium text-muted-foreground">{{ t('admin.settings.notification.inventory.ignoredProducts') }}</label>
+              <div class="rounded-lg border border-border bg-background/80 p-3">
+                <div class="flex flex-col gap-2 sm:flex-row">
+                  <Input
+                    v-model="productKeyword"
+                    :placeholder="t('admin.settings.notification.inventory.searchPlaceholder')"
+                    @keyup.enter="searchProducts"
+                  />
+                  <Button variant="outline" class="sm:w-auto" :disabled="productOptionsLoading" @click="searchProducts">
+                    {{ productOptionsLoading ? t('admin.common.loading') : t('admin.settings.notification.inventory.searchAction') }}
+                  </Button>
+                </div>
+                <div class="mt-3 flex flex-col gap-2 sm:flex-row">
+                  <Select v-model="selectedIgnoredProductValue">
+                    <SelectTrigger class="h-10">
+                      <SelectValue :placeholder="t('admin.settings.notification.inventory.selectPlaceholder')" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem v-for="product in productOptions" :key="product.id" :value="String(product.id)">
+                        {{ buildProductLabel(product) }}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button variant="secondary" class="sm:w-auto" @click="addIgnoredProduct">
+                    {{ t('admin.settings.notification.inventory.addAction') }}
+                  </Button>
+                </div>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <button
+                    v-for="product in ignoredProducts"
+                    :key="product.id"
+                    type="button"
+                    class="inline-flex items-center gap-2 rounded-full border border-border bg-muted px-3 py-1 text-xs text-foreground"
+                    @click="removeIgnoredProduct(product.id)"
+                  >
+                    <span>{{ product.label }}</span>
+                    <span class="text-muted-foreground">×</span>
+                  </button>
+                  <span v-if="ignoredProducts.length === 0" class="text-xs text-muted-foreground">
+                    {{ t('admin.settings.notification.inventory.emptyIgnoredProducts') }}
+                  </span>
+                </div>
+              </div>
+              <p class="text-xs text-muted-foreground">{{ t('admin.settings.notification.inventory.ignoredProductIDsHint') }}</p>
+            </div>
           </div>
         </div>
 

@@ -39,6 +39,7 @@ import {
   Wifi,
   Send,
   Crown,
+  Bell,
 } from 'lucide-vue-next'
 import { Menu } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
@@ -363,6 +364,12 @@ const navGroups = computed<NavGroup[]>(() => {
           to: '/settings',
           icon: SlidersHorizontal,
           permission: 'GET:/admin/settings',
+        },
+        {
+          label: t('admin.navItems.notificationCenter'),
+          to: '/settings/notifications',
+          icon: Bell,
+          permission: 'GET:/admin/settings/notification-center',
         },
         {
           label: t('admin.navItems.authz'),

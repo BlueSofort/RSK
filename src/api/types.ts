@@ -74,6 +74,23 @@ export interface AdminProduct {
   skus?: AdminProductSKU[]
 }
 
+export interface AdminNotificationLog {
+  id: number
+  event_type: string
+  biz_type: string
+  biz_id: number
+  channel: string
+  recipient: string
+  locale: string
+  title: string
+  body: string
+  status: string
+  error_message: string
+  is_test: boolean
+  variables?: Record<string, unknown>
+  created_at: string
+}
+
 // --- Order ---
 export interface AdminOrderItem {
   id: number

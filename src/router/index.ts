@@ -126,6 +126,12 @@ const routes = [
         meta: { permission: 'GET:/admin/settings' },
       },
       {
+        path: 'settings/notifications',
+        name: 'notifications',
+        component: () => import('@/views/admin/Notifications.vue'),
+        meta: { permission: 'GET:/admin/settings/notification-center' },
+      },
+      {
         path: 'security',
         name: 'security',
         component: () => import('@/views/admin/Security.vue'),

@@ -9,13 +9,11 @@ import { Textarea } from '@/components/ui/textarea'
 import { notifyError, notifySuccess } from '@/utils/notify'
 import SettingsSMTPTab from './components/SettingsSMTPTab.vue'
 import SettingsCaptchaTab from './components/SettingsCaptchaTab.vue'
-import SettingsNotificationTab from './components/SettingsNotificationTab.vue'
 
 const { t } = useI18n()
 const loading = ref(false)
 const smtpTabRef = ref<InstanceType<typeof SettingsSMTPTab>>()
 const captchaTabRef = ref<InstanceType<typeof SettingsCaptchaTab>>()
-const notificationTabRef = ref<InstanceType<typeof SettingsNotificationTab>>()
 const supportedLanguages = ['zh-CN', 'zh-TW', 'en-US'] as const
 type SupportedLanguage = (typeof supportedLanguages)[number]
 type SiteScriptPosition = 'head' | 'body_end'
@@ -57,7 +55,6 @@ const tabs = computed(() => [
   { label: t('admin.settings.tabs.smtp'), value: 'smtp' },
   { label: t('admin.settings.tabs.captcha'), value: 'captcha' },
   { label: t('admin.settings.tabs.telegram'), value: 'telegram' },
-  { label: t('admin.settings.tabs.notification'), value: 'notification' },
   { label: t('admin.settings.tabs.dashboard'), value: 'dashboard' },
 ])
 
@@ -82,12 +79,6 @@ const currencyOptions = computed(() => {
 })
 
 const createLocalizedField = () => ({ 'zh-CN': '', 'zh-TW': '', 'en-US': '' } as Record<SupportedLanguage, string>)
-const createNotificationLocalizedTemplate = () => ({ title: '', body: '' })
-const createNotificationSceneTemplate = () => ({
-  'zh-CN': createNotificationLocalizedTemplate(),
-  'zh-TW': createNotificationLocalizedTemplate(),
-  'en-US': createNotificationLocalizedTemplate(),
-})
 const createSiteScriptItem = (): SiteScriptItem => ({
   name: '',
   enabled: true,
@@ -251,33 +242,6 @@ const telegramForm = reactive({
   replay_ttl_seconds: 300,
 })
 
-const notificationData = reactive({
-  default_locale: 'zh-CN',
-  dedupe_ttl_seconds: 300,
-  channels: {
-    email: {
-      enabled: false,
-      recipients_text: '',
-    },
-    telegram: {
-      enabled: false,
-      recipients_text: '',
-    },
-  },
-  scenes: {
-    wallet_recharge_success: true,
-    order_paid_success: true,
-    manual_fulfillment_pending: true,
-    exception_alert: true,
-  },
-  templates: {
-    wallet_recharge_success: createNotificationSceneTemplate(),
-    order_paid_success: createNotificationSceneTemplate(),
-    manual_fulfillment_pending: createNotificationSceneTemplate(),
-    exception_alert: createNotificationSceneTemplate(),
-  },
-})
-
 const dashboardForm = reactive({
   alert: {
     low_stock_threshold: 5,
@@ -302,27 +266,6 @@ const normalizeNumber = (value: unknown, fallback: number) => {
   return parsed
 }
 
-const joinRecipients = (items: unknown) => {
-  if (!Array.isArray(items)) return ''
-  return items
-    .map((item) => String(item || '').trim())
-    .filter((item) => item !== '')
-    .join('\n')
-}
-
-const normalizeNotificationSceneTemplate = (raw: unknown) => {
-  const fallback = createNotificationSceneTemplate()
-  if (!raw || typeof raw !== 'object') return fallback
-  const record = raw as Record<string, unknown>
-  ;(['zh-CN', 'zh-TW', 'en-US'] as const).forEach((lang) => {
-    const item = record[lang] as Record<string, unknown> | undefined
-    if (!item || typeof item !== 'object') return
-    fallback[lang].title = typeof item.title === 'string' ? item.title : ''
-    fallback[lang].body = typeof item.body === 'string' ? item.body : ''
-  })
-  return fallback
-}
-
 const clampNumber = (value: unknown, min: number, max: number, fallback: number) => {
   const parsed = normalizeNumber(value, fallback)
   if (parsed < min) return min
@@ -341,12 +284,11 @@ const notifyErrorIfNeeded = (err: unknown, fallback: string) => {
 const fetchSettings = async () => {
   loading.value = true
   try {
-    const [siteRes, smtpRes, captchaRes, telegramRes, notificationRes, dashboardRes, registrationRes] = await Promise.all([
+    const [siteRes, smtpRes, captchaRes, telegramRes, dashboardRes, registrationRes] = await Promise.all([
       adminAPI.getSettings({ key: 'site_config' }),
       adminAPI.getSMTPSettings(),
       adminAPI.getCaptchaSettings(),
       adminAPI.getTelegramAuthSettings(),
-      adminAPI.getNotificationCenterSettings(),
       adminAPI.getSettings({ key: 'dashboard_config' }),
       adminAPI.getSettings({ key: 'registration_config' }),
     ])
@@ -474,32 +416,6 @@ const fetchSettings = async () => {
       telegramForm.mini_app_url = String(telegram.mini_app_url || '')
       telegramForm.login_expire_seconds = normalizeNumber(telegram.login_expire_seconds, 300)
       telegramForm.replay_ttl_seconds = normalizeNumber(telegram.replay_ttl_seconds, 300)
-    }
-
-    if (notificationRes.data && notificationRes.data.data) {
-      const notification = notificationRes.data.data as Record<string, unknown>
-      notificationData.default_locale = String(notification.default_locale || 'zh-CN')
-      notificationData.dedupe_ttl_seconds = normalizeNumber(notification.dedupe_ttl_seconds, 300)
-
-      const notifChannels = notification.channels as Record<string, Record<string, unknown>> | undefined
-      const notifEmail = notifChannels?.email
-      const notifTelegram = notifChannels?.telegram
-      notificationData.channels.email.enabled = !!notifEmail?.enabled
-      notificationData.channels.email.recipients_text = joinRecipients(notifEmail?.recipients)
-      notificationData.channels.telegram.enabled = !!notifTelegram?.enabled
-      notificationData.channels.telegram.recipients_text = joinRecipients(notifTelegram?.recipients)
-
-      const notifScenes = notification.scenes as Record<string, unknown> | undefined
-      notificationData.scenes.wallet_recharge_success = !!notifScenes?.wallet_recharge_success
-      notificationData.scenes.order_paid_success = !!notifScenes?.order_paid_success
-      notificationData.scenes.manual_fulfillment_pending = !!notifScenes?.manual_fulfillment_pending
-      notificationData.scenes.exception_alert = !!notifScenes?.exception_alert
-
-      const notifTemplates = notification.templates as Record<string, unknown> | undefined
-      notificationData.templates.wallet_recharge_success = normalizeNotificationSceneTemplate(notifTemplates?.wallet_recharge_success)
-      notificationData.templates.order_paid_success = normalizeNotificationSceneTemplate(notifTemplates?.order_paid_success)
-      notificationData.templates.manual_fulfillment_pending = normalizeNotificationSceneTemplate(notifTemplates?.manual_fulfillment_pending)
-      notificationData.templates.exception_alert = normalizeNotificationSceneTemplate(notifTemplates?.exception_alert)
     }
 
     if (dashboardRes.data && dashboardRes.data.data) {
@@ -647,10 +563,6 @@ const saveSettings = async () => {
     await captchaTabRef.value?.save()
     return
   }
-  if (currentTab.value === 'notification') {
-    await notificationTabRef.value?.save()
-    return
-  }
   loading.value = true
   try {
     if (currentTab.value === 'telegram') {
@@ -693,7 +605,7 @@ onMounted(() => {
             {{ lang.name }}
           </button>
         </div>
-        <Button size="sm" class="w-full sm:w-auto" :disabled="loading || smtpTabRef?.submitting || smtpTabRef?.smtpTesting || captchaTabRef?.submitting || notificationTabRef?.submitting" @click="saveSettings">
+        <Button size="sm" class="w-full sm:w-auto" :disabled="loading || smtpTabRef?.submitting || smtpTabRef?.smtpTesting || captchaTabRef?.submitting" @click="saveSettings">
           <span v-if="loading" class="h-3 w-3 animate-spin rounded-full border-2 border-primary/30 border-t-primary"></span>
           {{ loading ? t('admin.settings.actions.saving') : t('admin.settings.actions.save') }}
         </Button>
@@ -1050,12 +962,6 @@ onMounted(() => {
         </div>
       </div>
     </div>
-
-
-    <div v-show="currentTab === 'notification'">
-      <SettingsNotificationTab ref="notificationTabRef" :data="notificationData" :current-lang="currentLang" @saved="fetchSettings" />
-    </div>
-
 
     <div v-show="currentTab === 'dashboard'" class="space-y-6">
       <div class="rounded-xl border border-border bg-card">
