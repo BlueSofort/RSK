@@ -831,6 +831,8 @@ const messages = {
                 pending: '待交付',
                 delivered: '已交付',
             },
+            fulfillmentCopy: '复制内容',
+            fulfillmentCopied: '已复制',
         },
         guestOrders: {
             title: '游客订单查询',
@@ -1774,6 +1776,8 @@ const messages = {
                 pending: '待交付',
                 delivered: '已交付',
             },
+            fulfillmentCopy: '複製內容',
+            fulfillmentCopied: '已複製',
         },
         guestOrders: {
             title: '遊客訂單查詢',
@@ -2679,6 +2683,8 @@ const messages = {
                 pending: 'Pending',
                 delivered: 'Delivered',
             },
+            fulfillmentCopy: 'Copy',
+            fulfillmentCopied: 'Copied',
         },
         guestOrders: {
             title: 'Guest Order Lookup',

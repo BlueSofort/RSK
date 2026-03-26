@@ -270,8 +270,16 @@
                 <div v-else class="text-sm theme-text-muted">{{ t('orderDetail.noItems') }}</div>
               </div>
               <div class="mt-4">
-                <h3 class="text-sm font-semibold theme-text-primary mb-3">{{
-                  t('orderDetail.childFulfillmentTitle') }}</h3>
+                <div class="flex items-center justify-between mb-3">
+                  <h3 class="text-sm font-semibold theme-text-primary">{{
+                    t('orderDetail.childFulfillmentTitle') }}</h3>
+                  <button v-if="child.fulfillment?.status === 'delivered'"
+                    class="text-xs px-2.5 py-1 rounded-lg border theme-border transition-colors"
+                    :class="fulfillmentCopied ? 'text-emerald-600 border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30' : 'theme-text-muted hover:theme-text-primary'"
+                    @click="handleCopyFulfillment(child.fulfillment)">
+                    {{ fulfillmentCopied ? t('orderDetail.fulfillmentCopied') : t('orderDetail.fulfillmentCopy') }}
+                  </button>
+                </div>
                 <div v-if="child.fulfillment">
                   <div class="text-sm theme-text-muted">{{ t('orderDetail.fulfillmentType') }}：{{
                     fulfillmentTypeLabelText(child.fulfillment.type) }}</div>
@@ -294,7 +302,15 @@
 
         <div v-if="order.fulfillment"
           class="theme-panel rounded-2xl p-6">
-          <h2 class="text-lg font-bold mb-4">{{ t('orderDetail.fulfillmentTitle') }}</h2>
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-bold">{{ t('orderDetail.fulfillmentTitle') }}</h2>
+            <button v-if="order.fulfillment.status === 'delivered'"
+              class="text-xs px-3 py-1.5 rounded-lg border theme-border transition-colors"
+              :class="fulfillmentCopied ? 'text-emerald-600 border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30' : 'theme-text-muted hover:theme-text-primary'"
+              @click="handleCopyFulfillment(order.fulfillment)">
+              {{ fulfillmentCopied ? t('orderDetail.fulfillmentCopied') : t('orderDetail.fulfillmentCopy') }}
+            </button>
+          </div>
           <div class="text-sm theme-text-muted">{{ t('orderDetail.fulfillmentType') }}：{{
             fulfillmentTypeLabelText(order.fulfillment.type) }}</div>
           <div class="text-sm theme-text-muted">{{ t('orderDetail.fulfillmentStatus') }}：{{
@@ -322,6 +338,7 @@ import { useI18n } from 'vue-i18n'
 import { orderStatusClass, orderStatusLabel } from '../utils/status'
 import { fulfillmentStatusLabel, fulfillmentTypeLabel } from '../utils/fulfillment'
 import { debounceAsync } from '../utils/debounce'
+import { copyText } from '../utils/clipboard'
 import { amountToCents } from '../utils/money'
 import { buildSkuDisplayTextFromSnapshot } from '../utils/sku'
 import { getImageUrl } from '../utils/image'
@@ -333,6 +350,20 @@ const { t } = useI18n()
 
 const loading = ref(true)
 const order = ref<any>(null)
+const fulfillmentCopied = ref(false)
+let fulfillmentCopiedTimer: ReturnType<typeof setTimeout> | null = null
+
+const handleCopyFulfillment = async (fulfillment: any) => {
+  const lines = fulfillmentDeliveryLines(fulfillment)
+  const text = lines.length > 0 ? lines.join('\n') : (fulfillment?.payload || '')
+  if (!text) return
+  try {
+    await copyText(text)
+    fulfillmentCopied.value = true
+    if (fulfillmentCopiedTimer) clearTimeout(fulfillmentCopiedTimer)
+    fulfillmentCopiedTimer = setTimeout(() => { fulfillmentCopied.value = false }, 1500)
+  } catch {}
+}
 
 const showTimeCard = computed(() => {
   if (!order.value) return false
