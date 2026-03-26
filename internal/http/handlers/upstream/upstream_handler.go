@@ -206,9 +206,12 @@ func (h *Handler) ListProducts(c *gin.Context) {
 		}
 	}
 
+	// 批量解析映射商品的真实交付类型
+	fulfillmentTypeMap := h.resolveEffectiveFulfillmentTypes(products)
+
 	items := make([]upstreamProduct, 0, len(products))
 	for _, p := range products {
-		items = append(items, h.toUpstreamProductWithMemberPrice(p, memberLevelID))
+		items = append(items, h.toUpstreamProductWithMemberPrice(p, memberLevelID, fulfillmentTypeMap))
 	}
 
 	successResponse(c, gin.H{
@@ -263,9 +266,12 @@ func (h *Handler) GetProduct(c *gin.Context) {
 		}
 	}
 
+	// 解析映射商品的真实交付类型
+	fulfillmentTypeMap := h.resolveEffectiveFulfillmentTypes(products)
+
 	successResponse(c, gin.H{
 		"ok":      true,
-		"product": h.toUpstreamProductWithMemberPrice(products[0], memberLevelID),
+		"product": h.toUpstreamProductWithMemberPrice(products[0], memberLevelID, fulfillmentTypeMap),
 	})
 }
 
@@ -739,7 +745,35 @@ func (h *Handler) applyUpstreamStockToProducts(products []models.Product) {
 	}
 }
 
-func (h *Handler) toUpstreamProductWithMemberPrice(p models.Product, memberLevelID uint) upstreamProduct {
+// resolveEffectiveFulfillmentTypes 批量解析映射商品的真实交付类型
+// 对于映射商品（FulfillmentType="upstream"），返回 ProductMapping 中保存的原始交付类型
+func (h *Handler) resolveEffectiveFulfillmentTypes(products []models.Product) map[uint]string {
+	result := make(map[uint]string)
+	var mappedIDs []uint
+	for _, p := range products {
+		if p.IsMapped && p.FulfillmentType == constants.FulfillmentTypeUpstream {
+			mappedIDs = append(mappedIDs, p.ID)
+		}
+	}
+	if len(mappedIDs) == 0 {
+		return result
+	}
+	mappings, err := h.ProductMappingRepo.ListByLocalProductIDs(mappedIDs)
+	if err != nil {
+		logger.Warnw("resolve_effective_fulfillment_types_failed", "error", err)
+		return result
+	}
+	for _, m := range mappings {
+		ft := m.UpstreamFulfillmentType
+		if ft != constants.FulfillmentTypeAuto {
+			ft = constants.FulfillmentTypeManual
+		}
+		result[m.LocalProductID] = ft
+	}
+	return result
+}
+
+func (h *Handler) toUpstreamProductWithMemberPrice(p models.Product, memberLevelID uint, fulfillmentTypeMap map[uint]string) upstreamProduct {
 	skus := make([]upstreamSKU, 0, len(p.SKUs))
 	for _, s := range p.SKUs {
 		if !s.IsActive {
@@ -766,6 +800,12 @@ func (h *Handler) toUpstreamProductWithMemberPrice(p models.Product, memberLevel
 		skus = append(skus, si)
 	}
 
+	// 映射商品返回原始交付类型，非映射商品返回自身交付类型
+	effectiveFulfillmentType := p.FulfillmentType
+	if ft, ok := fulfillmentTypeMap[p.ID]; ok {
+		effectiveFulfillmentType = ft
+	}
+
 	result := upstreamProduct{
 		ID:               p.ID,
 		Slug:             p.Slug,
@@ -776,7 +816,7 @@ func (h *Handler) toUpstreamProductWithMemberPrice(p models.Product, memberLevel
 		Images:           p.Images,
 		Tags:             p.Tags,
 		PriceAmount:      p.PriceAmount.StringFixed(2),
-		FulfillmentType:  p.FulfillmentType,
+		FulfillmentType:  effectiveFulfillmentType,
 		ManualFormSchema: p.ManualFormSchemaJSON,
 		IsActive:         p.IsActive,
 		CategoryID:       p.CategoryID,

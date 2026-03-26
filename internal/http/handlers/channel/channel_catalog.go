@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/dujiao-next/internal/constants"
 	"github.com/dujiao-next/internal/logger"
 	"github.com/dujiao-next/internal/models"
 	"github.com/dujiao-next/internal/service"
@@ -122,6 +123,9 @@ func (h *Handler) GetProducts(c *gin.Context) {
 		logger.Warnw("channel_catalog_apply_stock", "error", err)
 	}
 
+	// 批量解析映射商品的真实交付类型
+	fulfillmentTypeMap := h.resolveEffectiveFulfillmentTypes(products)
+
 	currency, err := h.SettingService.GetSiteCurrency("CNY")
 	if err != nil {
 		logger.Warnw("channel_catalog_get_currency", "error", err)
@@ -163,6 +167,12 @@ func (h *Handler) GetProducts(c *gin.Context) {
 			imageURL = string(p.Images[0])
 		}
 
+		// 映射商品使用真实交付类型计算库存
+		ft := p.FulfillmentType
+		if eft, ok := fulfillmentTypeMap[p.ID]; ok {
+			ft = eft
+		}
+
 		item := productItem{
 			ID:           p.ID,
 			Title:        title,
@@ -170,8 +180,8 @@ func (h *Handler) GetProducts(c *gin.Context) {
 			ImageURL:     imageURL,
 			PriceFrom:    p.PriceAmount.String(),
 			Currency:     currency,
-			StockStatus:  computeStockStatus(p.FulfillmentType, p.AutoStockAvailable, p.ManualStockTotal),
-			StockCount:   computeStockCount(p.FulfillmentType, p.AutoStockAvailable, p.ManualStockTotal),
+			StockStatus:  computeStockStatus(ft, p.AutoStockAvailable, p.ManualStockTotal),
+			StockCount:   computeStockCount(ft, p.AutoStockAvailable, p.ManualStockTotal),
 			CategoryName: resolveLocalizedJSON(p.Category.NameJSON, locale, defaultLocale),
 		}
 
@@ -227,6 +237,19 @@ func (h *Handler) GetProductDetail(c *gin.Context) {
 		currency = "CNY"
 	}
 
+	// 解析映射商品的真实交付类型
+	effectiveFT := product.FulfillmentType
+	if product.IsMapped && product.FulfillmentType == constants.FulfillmentTypeUpstream {
+		mapping, err := h.ProductMappingRepo.GetByLocalProductID(product.ID)
+		if err == nil && mapping != nil {
+			eft := mapping.UpstreamFulfillmentType
+			if eft != constants.FulfillmentTypeAuto {
+				eft = constants.FulfillmentTypeManual
+			}
+			effectiveFT = eft
+		}
+	}
+
 	title := resolveLocalizedJSON(product.TitleJSON, locale, defaultLocale)
 	description := stripHTML(resolveLocalizedJSON(product.ContentJSON, locale, defaultLocale))
 
@@ -267,8 +290,8 @@ func (h *Handler) GetProductDetail(c *gin.Context) {
 			SKUCode:     sku.SKUCode,
 			SpecValues:  specValues,
 			Price:       sku.PriceAmount.String(),
-			StockStatus: computeStockStatus(product.FulfillmentType, sku.AutoStockAvailable, sku.ManualStockTotal),
-			StockCount:  computeStockCount(product.FulfillmentType, sku.AutoStockAvailable, sku.ManualStockTotal),
+			StockStatus: computeStockStatus(effectiveFT, sku.AutoStockAvailable, sku.ManualStockTotal),
+			StockCount:  computeStockCount(effectiveFT, sku.AutoStockAvailable, sku.ManualStockTotal),
 		}
 		if memberLevelID > 0 && h.MemberLevelService != nil {
 			memberPrice, _ := h.MemberLevelService.ResolveMemberPrice(memberLevelID, product.ID, sku.ID, sku.PriceAmount.Decimal)
@@ -296,10 +319,10 @@ func (h *Handler) GetProductDetail(c *gin.Context) {
 		"price_from":            product.PriceAmount.String(),
 		"member_price_from":     memberPriceFrom,
 		"currency":              currency,
-		"stock_status":          computeStockStatus(product.FulfillmentType, product.AutoStockAvailable, product.ManualStockTotal),
-		"stock_count":           computeStockCount(product.FulfillmentType, product.AutoStockAvailable, product.ManualStockTotal),
+		"stock_status":          computeStockStatus(effectiveFT, product.AutoStockAvailable, product.ManualStockTotal),
+		"stock_count":           computeStockCount(effectiveFT, product.AutoStockAvailable, product.ManualStockTotal),
 		"category_name":         resolveLocalizedJSON(product.Category.NameJSON, locale, defaultLocale),
-		"fulfillment_type":      product.FulfillmentType,
+		"fulfillment_type":      effectiveFT,
 		"max_purchase_quantity": normalizeChannelMaxPurchaseQuantity(product.MaxPurchaseQuantity),
 		"manual_form_schema":    normalizeChannelManualFormSchema(product.ManualFormSchemaJSON, locale, defaultLocale),
 		"purchase_note":         "",
@@ -466,4 +489,31 @@ func computeStockStatus(fulfillmentType string, autoStockAvailable int64, manual
 		return "in_stock"
 	}
 	return "out_of_stock"
+}
+
+// resolveEffectiveFulfillmentTypes 批量解析映射商品的真实交付类型
+func (h *Handler) resolveEffectiveFulfillmentTypes(products []models.Product) map[uint]string {
+	result := make(map[uint]string)
+	var mappedIDs []uint
+	for _, p := range products {
+		if p.IsMapped && p.FulfillmentType == constants.FulfillmentTypeUpstream {
+			mappedIDs = append(mappedIDs, p.ID)
+		}
+	}
+	if len(mappedIDs) == 0 {
+		return result
+	}
+	mappings, err := h.ProductMappingRepo.ListByLocalProductIDs(mappedIDs)
+	if err != nil {
+		logger.Warnw("resolve_effective_fulfillment_types_failed", "error", err)
+		return result
+	}
+	for _, m := range mappings {
+		ft := m.UpstreamFulfillmentType
+		if ft != constants.FulfillmentTypeAuto {
+			ft = constants.FulfillmentTypeManual
+		}
+		result[m.LocalProductID] = ft
+	}
+	return result
 }
