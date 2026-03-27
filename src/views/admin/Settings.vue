@@ -9,11 +9,13 @@ import { Textarea } from '@/components/ui/textarea'
 import { notifyError, notifySuccess } from '@/utils/notify'
 import SettingsSMTPTab from './components/SettingsSMTPTab.vue'
 import SettingsCaptchaTab from './components/SettingsCaptchaTab.vue'
+import SettingsOrderEmailTemplateTab from './components/SettingsOrderEmailTemplateTab.vue'
 
 const { t } = useI18n()
 const loading = ref(false)
 const smtpTabRef = ref<InstanceType<typeof SettingsSMTPTab>>()
 const captchaTabRef = ref<InstanceType<typeof SettingsCaptchaTab>>()
+const orderEmailTemplateTabRef = ref<InstanceType<typeof SettingsOrderEmailTemplateTab>>()
 const supportedLanguages = ['zh-CN', 'zh-TW', 'en-US'] as const
 type SupportedLanguage = (typeof supportedLanguages)[number]
 type SiteScriptPosition = 'head' | 'body_end'
@@ -54,6 +56,7 @@ const tabs = computed(() => [
   { label: t('admin.settings.tabs.about'), value: 'about' },
   { label: t('admin.settings.tabs.legal'), value: 'legal' },
   { label: t('admin.settings.tabs.smtp'), value: 'smtp' },
+  { label: t('admin.settings.tabs.orderEmailTemplate'), value: 'order_email_template' },
   { label: t('admin.settings.tabs.captcha'), value: 'captcha' },
   { label: t('admin.settings.tabs.telegram'), value: 'telegram' },
   { label: t('admin.settings.tabs.dashboard'), value: 'dashboard' },
@@ -244,6 +247,23 @@ const telegramForm = reactive({
   replay_ttl_seconds: 300,
 })
 
+const createOrderEmailLocalizedTemplate = () => ({ subject: '', body: '' })
+const createOrderEmailSceneTemplate = () => ({
+  'zh-CN': createOrderEmailLocalizedTemplate(),
+  'zh-TW': createOrderEmailLocalizedTemplate(),
+  'en-US': createOrderEmailLocalizedTemplate(),
+})
+const orderEmailTemplateData = reactive({
+  templates: {
+    default: createOrderEmailSceneTemplate(),
+    paid: createOrderEmailSceneTemplate(),
+    delivered: createOrderEmailSceneTemplate(),
+    delivered_with_content: createOrderEmailSceneTemplate(),
+    canceled: createOrderEmailSceneTemplate(),
+  },
+  guest_tip: { 'zh-CN': '', 'zh-TW': '', 'en-US': '' } as Record<typeof supportedLanguages[number], string>,
+})
+
 const dashboardForm = reactive({
   alert: {
     low_stock_threshold: 5,
@@ -286,13 +306,14 @@ const notifyErrorIfNeeded = (err: unknown, fallback: string) => {
 const fetchSettings = async () => {
   loading.value = true
   try {
-    const [siteRes, smtpRes, captchaRes, telegramRes, dashboardRes, registrationRes] = await Promise.all([
+    const [siteRes, smtpRes, captchaRes, telegramRes, dashboardRes, registrationRes, orderEmailTmplRes] = await Promise.all([
       adminAPI.getSettings({ key: 'site_config' }),
       adminAPI.getSMTPSettings(),
       adminAPI.getCaptchaSettings(),
       adminAPI.getTelegramAuthSettings(),
       adminAPI.getSettings({ key: 'dashboard_config' }),
       adminAPI.getSettings({ key: 'registration_config' }),
+      adminAPI.getOrderEmailTemplateSettings(),
     ])
 
     if (siteRes.data && siteRes.data.data) {
@@ -441,6 +462,32 @@ const fetchSettings = async () => {
       registrationForm.email_verification_enabled = regData.email_verification_enabled !== false
     }
 
+    if (orderEmailTmplRes.data && orderEmailTmplRes.data.data) {
+      const tmplData = orderEmailTmplRes.data.data as Record<string, unknown>
+      const templates = tmplData.templates as Record<string, unknown> | undefined
+      if (templates) {
+        const sceneKeys = ['default', 'paid', 'delivered', 'delivered_with_content', 'canceled'] as const
+        sceneKeys.forEach((key) => {
+          const scene = templates[key] as Record<string, unknown> | undefined
+          if (scene) {
+            supportedLanguages.forEach((lang) => {
+              const langData = scene[lang] as Record<string, unknown> | undefined
+              if (langData) {
+                orderEmailTemplateData.templates[key][lang].subject = String(langData.subject || '')
+                orderEmailTemplateData.templates[key][lang].body = String(langData.body || '')
+              }
+            })
+          }
+        })
+      }
+      const guestTip = tmplData.guest_tip as Record<string, unknown> | undefined
+      if (guestTip) {
+        supportedLanguages.forEach((lang) => {
+          orderEmailTemplateData.guest_tip[lang] = String(guestTip[lang] || '')
+        })
+      }
+    }
+
   } catch (err) {
     notifyErrorIfNeeded(err, t('admin.settings.alerts.saveFailed'))
   } finally {
@@ -565,6 +612,10 @@ const saveSettings = async () => {
     await smtpTabRef.value?.save()
     return
   }
+  if (currentTab.value === 'order_email_template') {
+    await orderEmailTemplateTabRef.value?.save()
+    return
+  }
   if (currentTab.value === 'captcha') {
     await captchaTabRef.value?.save()
     return
@@ -611,7 +662,7 @@ onMounted(() => {
             {{ lang.name }}
           </button>
         </div>
-        <Button size="sm" class="w-full sm:w-auto" :disabled="loading || smtpTabRef?.submitting || smtpTabRef?.smtpTesting || captchaTabRef?.submitting" @click="saveSettings">
+        <Button size="sm" class="w-full sm:w-auto" :disabled="loading || smtpTabRef?.submitting || smtpTabRef?.smtpTesting || captchaTabRef?.submitting || orderEmailTemplateTabRef?.submitting" @click="saveSettings">
           <span v-if="loading" class="h-3 w-3 animate-spin rounded-full border-2 border-primary/30 border-t-primary"></span>
           {{ loading ? t('admin.settings.actions.saving') : t('admin.settings.actions.save') }}
         </Button>
@@ -986,6 +1037,10 @@ onMounted(() => {
 
     <div v-show="currentTab === 'smtp'">
       <SettingsSMTPTab ref="smtpTabRef" :data="smtpData" @saved="fetchSettings" />
+    </div>
+
+    <div v-show="currentTab === 'order_email_template'">
+      <SettingsOrderEmailTemplateTab ref="orderEmailTemplateTabRef" :data="orderEmailTemplateData" :current-lang="currentLang" @saved="fetchSettings" />
     </div>
 
     <div v-show="currentTab === 'captcha'">
