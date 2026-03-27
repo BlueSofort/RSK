@@ -19,7 +19,9 @@ type ProductSKURepository interface {
 	Create(item *models.ProductSKU) error
 	CreateBatch(items []models.ProductSKU) error
 	Update(item *models.ProductSKU) error
+	Delete(id uint) error
 	DeleteByProduct(productID uint) error
+	PurgeSoftDeletedByProductAndCode(productID uint, skuCode string) error
 	ReserveManualStock(skuID uint, quantity int) (int64, error)
 	ReleaseManualStock(skuID uint, quantity int) (int64, error)
 	ConsumeManualStock(skuID uint, quantity int) (int64, error)
@@ -129,6 +131,21 @@ func (r *GormProductSKURepository) Update(item *models.ProductSKU) error {
 		return errors.New("sku is nil")
 	}
 	return r.db.Save(item).Error
+}
+
+// Delete 硬删除单个 SKU（绕过软删除，避免唯一索引冲突）
+func (r *GormProductSKURepository) Delete(id uint) error {
+	if id == 0 {
+		return errors.New("invalid sku id")
+	}
+	return r.db.Unscoped().Delete(&models.ProductSKU{}, id).Error
+}
+
+// PurgeSoftDeletedByProductAndCode 清理指定商品下同 sku_code 的软删除残留记录
+func (r *GormProductSKURepository) PurgeSoftDeletedByProductAndCode(productID uint, skuCode string) error {
+	return r.db.Unscoped().
+		Where("product_id = ? AND sku_code = ? AND deleted_at IS NOT NULL", productID, skuCode).
+		Delete(&models.ProductSKU{}).Error
 }
 
 // DeleteByProduct 删除指定商品下的 SKU
