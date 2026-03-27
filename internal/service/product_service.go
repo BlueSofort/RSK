@@ -420,11 +420,10 @@ func syncSingleProductSKU(skuRepo repository.ProductSKURepository, productID uin
 	}
 
 	for i := range skus {
-		if i == targetIndex || !skus[i].IsActive {
+		if i == targetIndex {
 			continue
 		}
-		skus[i].IsActive = false
-		if err := skuRepo.Update(&skus[i]); err != nil {
+		if err := skuRepo.Delete(skus[i].ID); err != nil {
 			return err
 		}
 	}
@@ -613,6 +612,10 @@ func applyProductSKUsWithStockGuard(
 			continue
 		}
 
+		// 清理同 sku_code 的软删除残留，避免唯一索引冲突
+		if err := skuRepo.PurgeSoftDeletedByProductAndCode(productID, row.SKUCode); err != nil {
+			return err
+		}
 		item := models.ProductSKU{
 			ProductID:         productID,
 			SKUCode:           row.SKUCode,
@@ -634,11 +637,7 @@ func applyProductSKUsWithStockGuard(
 		if _, ok := kept[existing.ID]; ok {
 			continue
 		}
-		if !existing.IsActive {
-			continue
-		}
-		existing.IsActive = false
-		if err := skuRepo.Update(&existing); err != nil {
+		if err := skuRepo.Delete(existing.ID); err != nil {
 			return err
 		}
 	}
