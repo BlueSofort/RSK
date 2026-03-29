@@ -321,6 +321,7 @@ export const adminAPI = {
   getOrder: (id: number) => api.get<ApiResponse<AdminOrder>>(`/admin/orders/${id}`),
   updateOrderStatus: (id: number, data: { status: string }) => api.patch<ApiResponse<AdminOrder>>(`/admin/orders/${id}`, data),
   createFulfillment: (data: Partial<AdminFulfillment>) => api.post<ApiResponse<AdminFulfillment>>('/admin/fulfillments', data),
+  downloadFulfillment: (orderId: number) => api.get(`/admin/orders/${orderId}/fulfillment/download`, { responseType: 'blob' }),
   getPayments: (params?: Record<string, unknown>) => api.get<ApiResponse<AdminPayment[]>>('/admin/payments', { params }),
   getPayment: (id: number) => api.get<ApiResponse<AdminPayment>>(`/admin/payments/${id}`),
   exportPayments: (params?: Record<string, unknown>) => api.get('/admin/payments/export', { params, responseType: 'blob' }),
@@ -420,6 +421,7 @@ export const adminAPI = {
   // Procurement Orders
   getProcurementOrders: (params?: Record<string, unknown>) => api.get<ApiResponse<AdminProcurementOrder[]>>('/admin/procurement-orders', { params }),
   getProcurementOrder: (id: number) => api.get<ApiResponse<AdminProcurementOrder>>(`/admin/procurement-orders/${id}`),
+  downloadProcurementUpstreamPayload: (id: number) => api.get(`/admin/procurement-orders/${id}/upstream-payload/download`, { responseType: 'blob' }),
   retryProcurementOrder: (id: number) => api.post<ApiResponse>(`/admin/procurement-orders/${id}/retry`),
   cancelProcurementOrder: (id: number) => api.post<ApiResponse>(`/admin/procurement-orders/${id}/cancel`),
 

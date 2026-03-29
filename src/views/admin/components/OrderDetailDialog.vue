@@ -225,6 +225,29 @@ const fulfillmentDeliveryLines = (fulfillment: AdminFulfillment & Record<string,
   return lines
 }
 
+const fulfillmentDownloading = ref(false)
+
+const isFulfillmentTruncated = (fulfillment: any) => {
+  return fulfillment?.payload_line_count > 100
+}
+
+const handleDownloadFulfillment = async (orderId: number, orderNo: string) => {
+  if (fulfillmentDownloading.value) return
+  fulfillmentDownloading.value = true
+  try {
+    const res = await adminAPI.downloadFulfillment(orderId)
+    const blob = new Blob([res.data], { type: 'text/plain; charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `fulfillment-${orderNo}.txt`
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch {} finally {
+    fulfillmentDownloading.value = false
+  }
+}
+
 const parseMoneyValue = (value?: string | number) => {
   if (value === null || value === undefined || value === '') return 0
   const parsed = Number(value)
@@ -674,7 +697,19 @@ watch(
                   <div v-if="child.fulfillment">
                     <div class="text-xs text-muted-foreground">{{ t('admin.orders.detailFulfillmentType') }}：{{ fulfillmentTypeLabel(child.fulfillment.type) }}</div>
                     <div class="text-xs text-muted-foreground">{{ t('admin.orders.detailFulfillmentStatus') }}：{{ fulfillmentStatusLabel(child.fulfillment.status) }}</div>
-                    <div v-if="fulfillmentDeliveryLines(child.fulfillment).length" class="mt-3 rounded-lg border border-border bg-muted/30 p-3 text-xs text-foreground space-y-1">
+                    <div v-if="isFulfillmentTruncated(child.fulfillment)" class="mt-3">
+                      <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs text-muted-foreground">{{ t('admin.orders.fulfillmentTotalLines', { count: child.fulfillment.payload_line_count }) }}</span>
+                        <Button size="xs" variant="outline" :disabled="fulfillmentDownloading" @click="handleDownloadFulfillment(child.id, child.order_no || selectedOrder?.order_no || '')">
+                          {{ fulfillmentDownloading ? t('admin.orders.fulfillmentDownloading') : t('admin.orders.fulfillmentDownload') }}
+                        </Button>
+                      </div>
+                      <div class="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+                        {{ t('admin.orders.fulfillmentTruncatedHint') }}
+                      </div>
+                      <div class="rounded-lg border border-border bg-muted/30 p-3 text-xs text-foreground whitespace-pre-wrap break-all max-h-48 overflow-y-auto">{{ child.fulfillment.payload }}</div>
+                    </div>
+                    <div v-else-if="fulfillmentDeliveryLines(child.fulfillment).length" class="mt-3 rounded-lg border border-border bg-muted/30 p-3 text-xs text-foreground space-y-1">
                       <div v-for="(line, lineIndex) in fulfillmentDeliveryLines(child.fulfillment)" :key="`child-fulfillment-${child.id}-${lineIndex}`" class="break-all">{{ line }}</div>
                     </div>
                     <div v-else-if="child.fulfillment.payload" class="mt-3 rounded-lg border border-border bg-muted/30 p-3 text-xs text-foreground whitespace-pre-wrap break-all">
@@ -688,10 +723,22 @@ watch(
           </div>
 
           <div v-if="selectedOrder.fulfillment" class="rounded-xl border border-border bg-muted/20 p-4">
-            <h3 class="text-sm font-semibold text-foreground mb-3">{{ t('admin.orders.detailFulfillmentTitle') }}</h3>
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-sm font-semibold text-foreground">{{ t('admin.orders.detailFulfillmentTitle') }}</h3>
+              <Button v-if="isFulfillmentTruncated(selectedOrder.fulfillment)" size="xs" variant="outline" :disabled="fulfillmentDownloading" @click="handleDownloadFulfillment(selectedOrder.id, selectedOrder.order_no)">
+                {{ fulfillmentDownloading ? t('admin.orders.fulfillmentDownloading') : t('admin.orders.fulfillmentDownload') }}
+              </Button>
+            </div>
             <div class="text-sm text-muted-foreground">{{ t('admin.orders.detailFulfillmentType') }}：{{ fulfillmentTypeLabel(selectedOrder.fulfillment.type) }}</div>
             <div class="text-sm text-muted-foreground">{{ t('admin.orders.detailFulfillmentStatus') }}：{{ fulfillmentStatusLabel(selectedOrder.fulfillment.status) }}</div>
-            <div v-if="fulfillmentDeliveryLines(selectedOrder.fulfillment).length" class="mt-3 rounded-lg border border-border bg-background p-3 text-xs text-muted-foreground space-y-1">
+            <div v-if="isFulfillmentTruncated(selectedOrder.fulfillment)" class="mt-3">
+              <div class="text-xs text-muted-foreground mb-2">{{ t('admin.orders.fulfillmentTotalLines', { count: selectedOrder.fulfillment.payload_line_count }) }}</div>
+              <div class="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+                {{ t('admin.orders.fulfillmentTruncatedHint') }}
+              </div>
+              <div class="rounded-lg border border-border bg-background p-3 text-xs text-muted-foreground whitespace-pre-wrap break-all max-h-64 overflow-y-auto">{{ selectedOrder.fulfillment.payload }}</div>
+            </div>
+            <div v-else-if="fulfillmentDeliveryLines(selectedOrder.fulfillment).length" class="mt-3 rounded-lg border border-border bg-background p-3 text-xs text-muted-foreground space-y-1">
               <div v-for="(line, lineIndex) in fulfillmentDeliveryLines(selectedOrder.fulfillment)" :key="`fulfillment-${selectedOrder.id}-${lineIndex}`" class="break-all">{{ line }}</div>
             </div>
             <div v-else class="mt-3 rounded-lg border border-border bg-background p-3 text-xs text-muted-foreground whitespace-pre-wrap break-all">
