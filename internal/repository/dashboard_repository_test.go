@@ -126,8 +126,8 @@ func TestGetTopProductsIncludesChildOrderItems(t *testing.T) {
 	if rows[0].Quantity != 2 {
 		t.Fatalf("quantity want 2 got %d", rows[0].Quantity)
 	}
-	if rows[0].PaidAmount != 170 {
-		t.Fatalf("paid amount want 170 got %.2f", rows[0].PaidAmount)
+	if rows[0].PaidAmount != 190 {
+		t.Fatalf("paid amount want 190 got %.2f", rows[0].PaidAmount)
 	}
 }
 

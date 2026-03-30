@@ -539,7 +539,7 @@ func (r *GormDashboardRepository) GetTopProducts(startAt, endAt time.Time, limit
 			%s as title,
 			COUNT(DISTINCT order_items.order_id) as paid_orders,
 			COALESCE(SUM(order_items.quantity), 0) as quantity,
-			COALESCE(SUM(order_items.total_price - order_items.coupon_discount - order_items.promotion_discount), 0) as paid_amount,
+			COALESCE(SUM(order_items.total_price - order_items.coupon_discount), 0) as paid_amount,
 			COALESCE(SUM(CASE WHEN order_items.cost_price > 0 THEN order_items.cost_price * order_items.quantity ELSE 0 END), 0) as total_cost
 		`, titleExpr)).
 		Joins("JOIN orders ON orders.id = order_items.order_id").
@@ -722,7 +722,7 @@ func (r *GormDashboardRepository) GetProfitOverview(startAt, endAt time.Time) (D
 	result := DashboardProfitOverviewRow{}
 	if err := r.db.Model(&models.OrderItem{}).
 		Select(`
-			COALESCE(SUM(order_items.total_price - order_items.coupon_discount - order_items.promotion_discount), 0) as total_revenue,
+			COALESCE(SUM(order_items.total_price - order_items.coupon_discount), 0) as total_revenue,
 			COALESCE(SUM(order_items.cost_price * order_items.quantity), 0) as total_cost
 		`).
 		Joins("JOIN orders ON orders.id = order_items.order_id").
@@ -745,7 +745,7 @@ func (r *GormDashboardRepository) GetProfitTrends(startAt, endAt time.Time) ([]D
 	if err := r.db.Model(&models.OrderItem{}).
 		Select(`
 			orders.created_at as created_at,
-			(order_items.total_price - order_items.coupon_discount - order_items.promotion_discount) as revenue,
+			(order_items.total_price - order_items.coupon_discount) as revenue,
 			(order_items.cost_price * order_items.quantity) as cost
 		`).
 		Joins("JOIN orders ON orders.id = order_items.order_id").
