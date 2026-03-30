@@ -232,7 +232,7 @@
             class="theme-panel rounded-2xl p-6">
             <h2 class="text-lg font-bold mb-4 theme-text-primary">{{ t('payment.itemsTitle') }}</h2>
             <div class="space-y-3 text-sm theme-text-muted">
-              <div v-for="item in orderItems" :key="item.id"
+              <div v-for="(item, idx) in orderItems" :key="idx"
                 class="flex flex-col md:flex-row md:items-center md:justify-between gap-2 border-b border-gray-100 dark:border-white/5 pb-3">
                 <div>
                   <div class="theme-text-primary font-medium">{{ getLocalizedText(item.title) }}</div>
@@ -508,10 +508,8 @@ const orderNoQuery = computed(() => {
   if (orderNo !== '') return orderNo
   return readRouteQueryValue('out_trade_no')
 })
-const orderId = computed(() => {
-  const fromOrder = Number(order.value?.id || 0)
-  if (Number.isFinite(fromOrder) && fromOrder > 0) return fromOrder
-  return 0
+const orderNoResolved = computed(() => {
+  return order.value?.order_no || orderNoQuery.value || ''
 })
 const backLink = computed(() => (isGuest.value ? '/guest/orders' : '/me/orders'))
 const hasGuestAuth = computed(() => Boolean(guestAuth.value.email && guestAuth.value.order_password))
@@ -833,7 +831,7 @@ const loadOrder = async (options?: { silent?: boolean }) => {
         order.value = null
         return
       }
-      const response = await guestOrderAPI.detailByOrderNo(orderNoQuery.value, {
+      const response = await guestOrderAPI.detail(orderNoQuery.value, {
         email: guestAuth.value.email,
         order_password: guestAuth.value.order_password,
       }, { silentBusinessError: true })
@@ -844,7 +842,7 @@ const loadOrder = async (options?: { silent?: boolean }) => {
         order.value = null
         return
       }
-      const response = await userOrderAPI.detailByOrderNo(orderNoQuery.value, { silentBusinessError: true })
+      const response = await userOrderAPI.detail(orderNoQuery.value, { silentBusinessError: true })
       order.value = response.data.data
     }
   } catch (err) {
@@ -943,17 +941,17 @@ const loadLatestPayment = async () => {
   if (!order.value || order.value.status !== 'pending_payment') return
   if (paymentResult.value) return
   if (isGuest.value && !hasGuestAuth.value) return
-  if (!orderId.value) return
+  if (!orderNoResolved.value) return
   try {
     let response
     if (isGuest.value) {
       response = await guestOrderAPI.latestPayment({
-        order_id: orderId.value,
+        order_no: orderNoResolved.value,
         email: guestAuth.value.email,
         order_password: guestAuth.value.order_password,
       })
     } else {
-      response = await paymentAPI.latest({ order_id: orderId.value })
+      response = await paymentAPI.latest({ order_no: orderNoResolved.value })
     }
     const data = response.data.data
     if (data && (data.pay_url || data.qr_code)) {
@@ -1025,7 +1023,7 @@ const capturePaypalIfNeeded = async () => {
   const token = readRouteQueryValue('token')
   const payerId = readRouteQueryValue('payer_id') || readRouteQueryValue('PayerID')
   if (returnFlag !== '1' && token === '' && payerId === '') return
-  if (!orderId.value || !order.value || order.value.status !== 'pending_payment') return
+  if (!orderNoResolved.value || !order.value || order.value.status !== 'pending_payment') return
 
   capturing.value = true
   error.value = ''
@@ -1063,7 +1061,7 @@ const captureStripeIfNeeded = async () => {
   const returnFlag = readRouteQueryValue('stripe_return').toLowerCase()
   const sessionID = readRouteQueryValue('session_id')
   if (returnFlag !== '1' && sessionID === '') return
-  if (!orderId.value || !order.value || order.value.status !== 'pending_payment') return
+  if (!orderNoResolved.value || !order.value || order.value.status !== 'pending_payment') return
 
   capturing.value = true
   error.value = ''
@@ -1112,7 +1110,7 @@ const syncPaymentReturnIfNeeded = async () => {
 
 const performPayment = async () => {
   error.value = ''
-  if (!orderId.value) {
+  if (!orderNoResolved.value) {
     error.value = t('payment.orderNotFound')
     return
   }
@@ -1146,7 +1144,7 @@ const performPayment = async () => {
       const response = await guestOrderAPI.createPayment({
         email: guestAuth.value.email,
         order_password: guestAuth.value.order_password,
-        order_id: orderId.value,
+        order_no: orderNoResolved.value,
         channel_id: selectedChannelId.value,
       })
       paymentResult.value = response.data.data
@@ -1157,7 +1155,7 @@ const performPayment = async () => {
       startPolling()
     } else {
       const payload: any = {
-        order_id: orderId.value,
+        order_no: orderNoResolved.value,
         use_balance: useBalance.value,
       }
       if (requiresOnlineChannel.value && selectedChannelId.value) {

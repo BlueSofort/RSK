@@ -86,7 +86,6 @@ export interface WalletAccountData {
 
 export interface WalletTransactionData {
     id: number
-    order_id?: number | null
     type: string
     direction: string
     amount: string
@@ -161,7 +160,6 @@ export interface AffiliateDashboardData {
 
 export interface AffiliateCommissionData {
     id: number
-    order_id: number
     commission_type: string
     commission_amount: string
     status: string
@@ -187,7 +185,7 @@ export interface AffiliateWithdrawApplyPayload {
 }
 
 export interface CreatePaymentPayload {
-    order_id: number
+    order_no: string
     channel_id?: number
     use_balance?: boolean
 }
@@ -197,7 +195,7 @@ export interface PaymentCreateResult {
     wallet_paid_amount?: string
     online_pay_amount?: string
     payment_id?: number
-    order_id?: number
+    order_no?: string
     channel_id?: number
     provider_type?: string
     channel_type?: string

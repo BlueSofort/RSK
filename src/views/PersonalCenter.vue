@@ -227,7 +227,7 @@
               <div v-else class="space-y-3">
                 <div
                   v-for="order in userProfileStore.recentOrders"
-                  :key="order.order_no || order.id"
+                  :key="order.order_no"
                   class="rounded-xl border theme-surface-soft px-4 py-3 transition-all theme-card-interactive"
                 >
                   <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

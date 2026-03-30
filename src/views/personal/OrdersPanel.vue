@@ -118,7 +118,7 @@
     <div v-else class="space-y-4">
       <div
         v-for="order in orders"
-        :key="order.order_no || order.id"
+        :key="order.order_no"
         class="rounded-2xl border theme-panel-soft p-6 shadow-sm transition-all theme-card-interactive"
       >
         <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">

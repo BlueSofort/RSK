@@ -149,7 +149,7 @@
           </thead>
           <tbody class="divide-y divide-gray-200 dark:divide-white/10">
             <tr v-for="item in commissions" :key="item.id">
-              <td class="px-4 py-3 font-mono text-xs theme-text-primary">{{ `#${item.order_id}` }}</td>
+              <td class="px-4 py-3 font-mono text-xs theme-text-primary">-</td>
               <td class="px-4 py-3 font-mono text-xs theme-text-primary">{{ item.commission_amount }}</td>
               <td class="px-4 py-3 text-xs">
                 <span class="theme-badge px-2.5 py-1 text-xs font-semibold" :class="commissionStatusClass(item.status)">

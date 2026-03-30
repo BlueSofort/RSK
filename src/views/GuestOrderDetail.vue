@@ -123,7 +123,7 @@
         <div class="theme-panel rounded-2xl p-6">
           <h2 class="text-lg font-bold mb-4">{{ t('orderDetail.itemsTitle') }}</h2>
           <div v-if="order.items && order.items.length > 0" class="space-y-4">
-            <div v-for="item in order.items" :key="item.id"
+            <div v-for="(item, idx) in order.items" :key="idx"
               class="flex items-start justify-between gap-4 border-b border-gray-100 pb-3 dark:border-white/5">
               <div class="flex min-w-0 items-start gap-3">
                 <div class="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm dark:border-white/10 dark:bg-black/30 sm:h-16 sm:w-16">
@@ -162,7 +162,7 @@
                   <div v-if="manualSubmissionRows(item.manual_form_submission, item.manual_form_schema_snapshot).length"
                     class="mt-3 rounded-xl border border-gray-200 bg-white p-3 text-xs text-gray-600 dark:border-white/10 dark:bg-black/30 dark:text-gray-300">
                     <div class="mb-2 font-semibold theme-text-secondary">{{ t('orderDetail.manualSubmissionTitle') }}</div>
-                    <div v-for="row in manualSubmissionRows(item.manual_form_submission, item.manual_form_schema_snapshot)" :key="`${item.id}-${row.key}`" class="mb-1 last:mb-0">
+                    <div v-for="row in manualSubmissionRows(item.manual_form_submission, item.manual_form_schema_snapshot)" :key="row.key" class="mb-1 last:mb-0">
                       <span class="theme-text-primary">{{ row.label }}</span>：{{ row.value }}
                     </div>
                   </div>
@@ -209,7 +209,7 @@
                 <h3 class="text-sm font-semibold theme-text-primary mb-3">{{ t('orderDetail.childItemsTitle')
                   }}</h3>
                 <div v-if="child.items && child.items.length" class="space-y-3">
-                  <div v-for="item in child.items" :key="item.id"
+                  <div v-for="(item, cidx) in child.items" :key="cidx"
                     class="flex items-start justify-between gap-4 border-b border-gray-100 pb-3 text-sm theme-text-muted dark:border-white/5">
                     <div class="flex min-w-0 items-start gap-3">
                       <div class="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm dark:border-white/10 dark:bg-black/30 sm:h-16 sm:w-16">
@@ -248,7 +248,7 @@
                         <div v-if="manualSubmissionRows(item.manual_form_submission, item.manual_form_schema_snapshot).length"
                           class="mt-3 rounded-xl border border-gray-200 bg-white p-3 text-xs text-gray-600 dark:border-white/10 dark:bg-black/30 dark:text-gray-300">
                           <div class="mb-2 font-semibold theme-text-secondary">{{ t('orderDetail.manualSubmissionTitle') }}</div>
-                          <div v-for="row in manualSubmissionRows(item.manual_form_submission, item.manual_form_schema_snapshot)" :key="`${item.id}-${row.key}`" class="mb-1 last:mb-0">
+                          <div v-for="row in manualSubmissionRows(item.manual_form_submission, item.manual_form_schema_snapshot)" :key="row.key" class="mb-1 last:mb-0">
                             <span class="theme-text-primary">{{ row.label }}</span>：{{ row.value }}
                           </div>
                         </div>
@@ -297,7 +297,7 @@
                       <span class="text-sm theme-text-muted">{{ t('orderDetail.fulfillmentTotalLines', { count: child.fulfillment.payload_line_count }) }}</span>
                       <button class="text-xs px-2.5 py-1 rounded-lg border theme-border theme-text-muted hover:theme-text-primary"
                         :disabled="fulfillmentDownloading"
-                        @click="handleDownloadFulfillment(child.id, child.order_no || order.order_no)">
+                        @click="handleDownloadFulfillment(child.order_no || order.order_no)">
                         {{ fulfillmentDownloading ? t('orderDetail.fulfillmentDownloading') : t('orderDetail.fulfillmentDownload') }}
                       </button>
                     </div>
@@ -329,7 +329,7 @@
               <button v-if="isFulfillmentTruncated(order.fulfillment)"
                 class="text-xs px-3 py-1.5 rounded-lg border theme-border transition-colors theme-text-muted hover:theme-text-primary"
                 :disabled="fulfillmentDownloading"
-                @click="handleDownloadFulfillment(order.id, order.order_no)">
+                @click="handleDownloadFulfillment(order.order_no)">
                 {{ fulfillmentDownloading ? t('orderDetail.fulfillmentDownloading') : t('orderDetail.fulfillmentDownload') }}
               </button>
               <button v-if="order.fulfillment.status === 'delivered' && !isFulfillmentTruncated(order.fulfillment)"
@@ -399,11 +399,11 @@ const isFulfillmentTruncated = (fulfillment: any) => {
   return fulfillment?.payload_line_count > 100
 }
 
-const handleDownloadFulfillment = async (orderId: number, orderNo: string) => {
+const handleDownloadFulfillment = async (orderNo: string) => {
   if (fulfillmentDownloading.value) return
   fulfillmentDownloading.value = true
   try {
-    const res = await guestOrderAPI.downloadFulfillment(orderId, {
+    const res = await guestOrderAPI.downloadFulfillment(orderNo, {
       email: auth.value.email,
       order_password: auth.value.order_password,
     })
@@ -456,7 +456,7 @@ const loadOrder = async () => {
       authError.value = t('guestOrderDetail.authRequired')
       return
     }
-    const response = await guestOrderAPI.detailByOrderNo(String(route.params.order_no || '').trim(), {
+    const response = await guestOrderAPI.detail(String(route.params.order_no || '').trim(), {
       email: auth.value.email,
       order_password: auth.value.order_password,
     })
