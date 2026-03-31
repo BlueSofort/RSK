@@ -4,9 +4,9 @@ import (
 	"errors"
 
 	"github.com/dujiao-next/internal/constants"
+	"github.com/dujiao-next/internal/dto"
 	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/http/response"
-	"github.com/dujiao-next/internal/models"
 	"github.com/dujiao-next/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -18,32 +18,6 @@ type CartItemRequest struct {
 	SKUID           uint   `json:"sku_id"`
 	Quantity        int    `json:"quantity" binding:"required"`
 	FulfillmentType string `json:"fulfillment_type"`
-}
-
-// CartProduct 购物车商品摘要
-type CartProduct struct {
-	ID                  uint               `json:"id"`
-	Slug                string             `json:"slug"`
-	Title               models.JSON        `json:"title"`
-	PriceAmount         models.Money       `json:"price_amount"`
-	Images              models.StringArray `json:"images"`
-	Tags                models.StringArray `json:"tags"`
-	PurchaseType        string             `json:"purchase_type"`
-	MaxPurchaseQuantity int                `json:"max_purchase_quantity"`
-	FulfillmentType     string             `json:"fulfillment_type"`
-	IsActive            bool               `json:"is_active"`
-}
-
-// CartItemResponse 购物车项响应
-type CartItemResponse struct {
-	ProductID       uint         `json:"product_id"`
-	SKUID           uint         `json:"sku_id"`
-	Quantity        int          `json:"quantity"`
-	FulfillmentType string       `json:"fulfillment_type"`
-	UnitPrice       models.Money `json:"unit_price"`
-	OriginalPrice   models.Money `json:"original_price"`
-	Currency        string       `json:"currency"`
-	Product         CartProduct  `json:"product"`
 }
 
 // GetCart 获取购物车
@@ -70,7 +44,7 @@ func (h *Handler) GetCart(c *gin.Context) {
 		return
 	}
 
-	respItems := make([]CartItemResponse, 0, len(items))
+	respItems := make([]dto.CartItemResp, 0, len(items))
 	for _, item := range items {
 		if item.Product == nil {
 			continue
@@ -83,8 +57,7 @@ func (h *Handler) GetCart(c *gin.Context) {
 		if cartFT == constants.FulfillmentTypeUpstream {
 			cartFT = constants.FulfillmentTypeManual
 		}
-		product := CartProduct{
-			ID:                  item.Product.ID,
+		product := dto.CartProductResp{
 			Slug:                item.Product.Slug,
 			Title:               item.Product.TitleJSON,
 			PriceAmount:         item.Product.PriceAmount,
@@ -95,7 +68,7 @@ func (h *Handler) GetCart(c *gin.Context) {
 			FulfillmentType:     productFT,
 			IsActive:            item.Product.IsActive,
 		}
-		respItems = append(respItems, CartItemResponse{
+		respItems = append(respItems, dto.CartItemResp{
 			ProductID:       item.ProductID,
 			SKUID:           item.SKUID,
 			Quantity:        item.Quantity,

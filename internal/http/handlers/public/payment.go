@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/dujiao-next/internal/constants"
+	"github.com/dujiao-next/internal/dto"
 	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/http/response"
 	"github.com/dujiao-next/internal/service"
@@ -76,25 +77,7 @@ func (h *Handler) CreatePayment(c *gin.Context) {
 		return
 	}
 
-	resp := gin.H{
-		"order_paid":         result.OrderPaid,
-		"wallet_paid_amount": result.WalletPaidAmount,
-		"online_pay_amount":  result.OnlinePayAmount,
-	}
-	if result.Payment != nil {
-		resp["payment_id"] = result.Payment.ID
-		resp["channel_id"] = result.Payment.ChannelID
-		resp["provider_type"] = result.Payment.ProviderType
-		resp["channel_type"] = result.Payment.ChannelType
-		resp["interaction_mode"] = result.Payment.InteractionMode
-		resp["pay_url"] = result.Payment.PayURL
-		resp["qr_code"] = result.Payment.QRCode
-		resp["expires_at"] = result.Payment.ExpiredAt
-	}
-	if result.Channel != nil {
-		resp["channel_name"] = result.Channel.Name
-	}
-	response.Success(c, resp)
+	response.Success(c, dto.NewCreatePaymentResp(result))
 }
 
 // CapturePayment 用户捕获支付。
@@ -185,18 +168,7 @@ func (h *Handler) GetLatestPayment(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, gin.H{
-		"payment_id":       payment.ID,
-		"order_no":         order.OrderNo,
-		"channel_id":       payment.ChannelID,
-		"channel_name":     payment.ChannelName,
-		"provider_type":    payment.ProviderType,
-		"channel_type":     payment.ChannelType,
-		"interaction_mode": payment.InteractionMode,
-		"pay_url":          payment.PayURL,
-		"qr_code":          payment.QRCode,
-		"expires_at":       payment.ExpiredAt,
-	})
+	response.Success(c, dto.NewLatestPaymentResp(payment, order.OrderNo))
 }
 
 func respondPaymentCreateError(c *gin.Context, err error) {

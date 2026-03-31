@@ -505,10 +505,10 @@ func (h *Handler) GetMyTelegramBinding(c *gin.Context) {
 		return
 	}
 	if identity == nil {
-		response.Success(c, gin.H{"bound": false})
+		response.Success(c, dto.NewTelegramBindingResp(nil))
 		return
 	}
-	response.Success(c, shared.BuildTelegramBindingResponse(identity))
+	response.Success(c, dto.NewTelegramBindingResp(identity))
 }
 
 // BindMyTelegram 绑定当前用户 Telegram
@@ -558,7 +558,7 @@ func (h *Handler) BindMyTelegram(c *gin.Context) {
 		}
 		return
 	}
-	response.Success(c, shared.BuildTelegramBindingResponse(identity))
+	response.Success(c, dto.NewTelegramBindingResp(identity))
 }
 
 // BindMyTelegramMiniApp 绑定当前用户的 Telegram Mini App 身份
@@ -601,7 +601,7 @@ func (h *Handler) BindMyTelegramMiniApp(c *gin.Context) {
 		}
 		return
 	}
-	response.Success(c, shared.BuildTelegramBindingResponse(identity))
+	response.Success(c, dto.NewTelegramBindingResp(identity))
 }
 
 // UnbindMyTelegram 解绑当前用户 Telegram

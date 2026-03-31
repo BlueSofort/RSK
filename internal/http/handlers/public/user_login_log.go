@@ -3,6 +3,7 @@ package public
 import (
 	"strconv"
 
+	"github.com/dujiao-next/internal/dto"
 	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/http/response"
 
@@ -27,5 +28,5 @@ func (h *Handler) GetMyLoginLogs(c *gin.Context) {
 	}
 
 	pagination := response.BuildPagination(page, pageSize, total)
-	response.SuccessWithPage(c, logs, pagination)
+	response.SuccessWithPage(c, dto.NewLoginLogRespList(logs), pagination)
 }
