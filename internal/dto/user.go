@@ -41,6 +41,32 @@ func NewUserProfileResp(user *models.User, emailMode, passwordMode string) UserP
 	// LastLoginAt、CreatedAt、UpdatedAt、DeletedAt
 }
 
+// TelegramBindingResp Telegram 绑定状态响应
+type TelegramBindingResp struct {
+	Bound          bool       `json:"bound"`
+	Provider       string     `json:"provider,omitempty"`
+	ProviderUserID string     `json:"provider_user_id,omitempty"`
+	Username       string     `json:"username,omitempty"`
+	AvatarURL      string     `json:"avatar_url,omitempty"`
+	AuthAt         *time.Time `json:"auth_at,omitempty"`
+}
+
+// NewTelegramBindingResp 从 models.UserOAuthIdentity 构造响应
+func NewTelegramBindingResp(identity *models.UserOAuthIdentity) TelegramBindingResp {
+	if identity == nil {
+		return TelegramBindingResp{Bound: false}
+	}
+	return TelegramBindingResp{
+		Bound:          true,
+		Provider:       identity.Provider,
+		ProviderUserID: identity.ProviderUserID,
+		Username:       identity.Username,
+		AvatarURL:      identity.AvatarURL,
+		AuthAt:         identity.AuthAt,
+	}
+	// 排除：ID、UserID、CreatedAt、UpdatedAt
+}
+
 // UserAuthBriefResp 登录/注册返回的精简用户信息
 type UserAuthBriefResp struct {
 	ID              uint       `json:"id"`

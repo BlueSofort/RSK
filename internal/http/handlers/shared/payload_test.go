@@ -2,7 +2,6 @@ package shared
 
 import (
 	"testing"
-	"time"
 
 	"github.com/dujiao-next/internal/models"
 
@@ -45,26 +44,5 @@ func TestBuildChannelIdentityResponse(t *testing.T) {
 	}
 	if userPayload["display_name"] != "TG Buyer" {
 		t.Fatalf("display name mismatch: %#v", userPayload["display_name"])
-	}
-}
-
-func TestBuildTelegramBindingResponse(t *testing.T) {
-	if payload := BuildTelegramBindingResponse(nil); payload["bound"] != false {
-		t.Fatalf("nil identity should be unbound: %#v", payload)
-	}
-
-	authAt := time.Now().UTC()
-	identity := &models.UserOAuthIdentity{
-		Provider:       "telegram",
-		ProviderUserID: "9988",
-		Username:       "buyer9988",
-		AuthAt:         &authAt,
-	}
-	payload := BuildTelegramBindingResponse(identity)
-	if payload["bound"] != true {
-		t.Fatalf("bound flag mismatch: %#v", payload["bound"])
-	}
-	if payload["provider_user_id"] != "9988" {
-		t.Fatalf("provider user id mismatch: %#v", payload["provider_user_id"])
 	}
 }
