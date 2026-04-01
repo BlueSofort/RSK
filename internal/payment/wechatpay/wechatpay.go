@@ -57,6 +57,7 @@ const (
 
 // Config 微信官方支付配置。
 type Config struct {
+	common.ExchangeRateConfig
 	AppID              string `json:"appid"`
 	MerchantID         string `json:"mchid"`
 	MerchantSerialNo   string `json:"merchant_serial_no"`
@@ -768,6 +769,7 @@ func (c *Config) Normalize() {
 	if c.BaseURL == "" {
 		c.BaseURL = defaultBaseURL
 	}
+	c.ExchangeRateConfig.NormalizeExchangeRate()
 }
 
 func withDefaultTimeout(ctx context.Context) (context.Context, context.CancelFunc) {

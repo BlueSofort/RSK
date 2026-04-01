@@ -21,6 +21,20 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+// appendExchangeInfo 将 payment.Amount 更新为转换后金额（与网关实际交互的金额），
+// 原始金额记录到 ProviderPayload 用于审计追踪。
+func appendExchangeInfo(payment *models.Payment, convertedAmount, exchangeRate, originalAmount, originalCurrency string) {
+	if d, err := decimal.NewFromString(convertedAmount); err == nil {
+		payment.Amount = models.Money{Decimal: d}
+	}
+	if payment.ProviderPayload == nil {
+		payment.ProviderPayload = models.JSON{}
+	}
+	payment.ProviderPayload["exchange_rate"] = strings.TrimSpace(exchangeRate)
+	payment.ProviderPayload["original_amount"] = originalAmount
+	payment.ProviderPayload["original_currency"] = originalCurrency
+}
+
 func (s *PaymentService) applyProviderPayment(input CreatePaymentInput, order *models.Order, channel *models.PaymentChannel, payment *models.Payment) (err error) {
 	providerType := strings.ToLower(strings.TrimSpace(channel.ProviderType))
 	channelType := strings.ToLower(strings.TrimSpace(channel.ChannelType))
@@ -57,6 +71,19 @@ func (s *PaymentService) applyProviderPayment(input CreatePaymentInput, order *m
 		if err := epay.ValidateConfig(cfg); err != nil {
 			return fmt.Errorf("%w: %v", ErrPaymentChannelConfigInvalid, err)
 		}
+		originalAmount := payment.Amount.String()
+		originalCurrency := payment.Currency
+		payAmount := originalAmount
+		payCurrency := originalCurrency
+		if cfg.NeedsCurrencyConversion() {
+			converted, targetCur, convErr := cfg.ConvertAmount(payAmount, payCurrency, 2)
+			if convErr != nil {
+				return fmt.Errorf("%w: %v", ErrPaymentChannelConfigInvalid, convErr)
+			}
+			payAmount = converted
+			payCurrency = targetCur
+			payment.Currency = payCurrency
+		}
 		notifyURL := strings.TrimSpace(cfg.NotifyURL)
 		returnURL := appendURLQuery(cfg.ReturnURL, buildPaymentReturnQuery(input, order, "epay_return", ""))
 		subject := buildOrderSubject(order)
@@ -64,7 +91,7 @@ func (s *PaymentService) applyProviderPayment(input CreatePaymentInput, order *m
 		createInput := epay.CreateInput{
 			OrderNo:     providerOrderNo,
 			PaymentID:   payment.ID,
-			Amount:      payment.Amount.String(),
+			Amount:      payAmount,
 			Subject:     subject,
 			ChannelType: channel.ChannelType,
 			ClientIP:    strings.TrimSpace(input.ClientIP),
@@ -90,6 +117,9 @@ func (s *PaymentService) applyProviderPayment(input CreatePaymentInput, order *m
 			payment.QRCode = ""
 			if result.Raw != nil {
 				payment.ProviderPayload = models.JSON(result.Raw)
+			}
+			if cfg.NeedsCurrencyConversion() {
+				appendExchangeInfo(payment, payAmount, cfg.ExchangeRate, originalAmount, originalCurrency)
 			}
 			payment.UpdatedAt = time.Now()
 			if err := s.paymentRepo.Update(payment); err != nil {
@@ -120,6 +150,9 @@ func (s *PaymentService) applyProviderPayment(input CreatePaymentInput, order *m
 		}
 		if result.Raw != nil {
 			payment.ProviderPayload = models.JSON(result.Raw)
+		}
+		if cfg.NeedsCurrencyConversion() {
+			appendExchangeInfo(payment, payAmount, cfg.ExchangeRate, originalAmount, originalCurrency)
 		}
 		payment.UpdatedAt = time.Now()
 		if err := s.paymentRepo.Update(payment); err != nil {
@@ -329,15 +362,11 @@ func (s *PaymentService) applyProviderPayment(input CreatePaymentInput, order *m
 			payment.Status = constants.PaymentStatusPending
 			payment.ProviderRef = strings.TrimSpace(createResult.OrderID)
 			if createResult.Raw != nil {
-				providerPayload := models.JSON(createResult.Raw)
-				if cfg.NeedsCurrencyConversion() {
-					providerPayload["converted_amount"] = payAmount
-					providerPayload["converted_currency"] = payCurrency
-					providerPayload["exchange_rate"] = strings.TrimSpace(cfg.ExchangeRate)
-					providerPayload["original_amount"] = payment.Amount.String()
-					providerPayload["original_currency"] = payment.Currency
-				}
-				payment.ProviderPayload = providerPayload
+				payment.ProviderPayload = models.JSON(createResult.Raw)
+			}
+			if cfg.NeedsCurrencyConversion() {
+				appendExchangeInfo(payment, payAmount, cfg.ExchangeRate, payment.Amount.String(), payment.Currency)
+				payment.Currency = payCurrency
 			}
 			payment.UpdatedAt = time.Now()
 			if err := s.paymentRepo.Update(payment); err != nil {
@@ -345,7 +374,6 @@ func (s *PaymentService) applyProviderPayment(input CreatePaymentInput, order *m
 			}
 			return nil
 		case constants.PaymentChannelTypeAlipay:
-			payment.Currency = "CNY"
 			cfg, err := alipay.ParseConfig(channel.ConfigJSON)
 			if err != nil {
 				return fmt.Errorf("%w: %v", ErrPaymentChannelConfigInvalid, err)
@@ -353,10 +381,25 @@ func (s *PaymentService) applyProviderPayment(input CreatePaymentInput, order *m
 			if err := alipay.ValidateConfig(cfg, channel.InteractionMode); err != nil {
 				return fmt.Errorf("%w: %v", ErrPaymentChannelConfigInvalid, err)
 			}
+			originalAmount := payment.Amount.String()
+			originalCurrency := payment.Currency
+			payAmount := originalAmount
+			payCurrency := originalCurrency
+			if cfg.NeedsCurrencyConversion() {
+				converted, targetCur, convErr := cfg.ConvertAmount(payAmount, payCurrency, 2)
+				if convErr != nil {
+					return fmt.Errorf("%w: %v", ErrPaymentChannelConfigInvalid, convErr)
+				}
+				payAmount = converted
+				payCurrency = targetCur
+			} else {
+				payCurrency = "CNY"
+			}
+			payment.Currency = payCurrency
 			createResult, err := alipay.CreatePayment(gatewayCtx, cfg, alipay.CreateInput{
 				OrderNo:        order.OrderNo,
 				PaymentID:      payment.ID,
-				Amount:         payment.Amount.String(),
+				Amount:         payAmount,
 				Subject:        buildOrderSubject(order),
 				NotifyURL:      cfg.NotifyURL,
 				ReturnURL:      appendURLQuery(cfg.ReturnURL, buildPaymentReturnQuery(input, order, "alipay_return", "")),
@@ -381,13 +424,15 @@ func (s *PaymentService) applyProviderPayment(input CreatePaymentInput, order *m
 			if createResult.Raw != nil {
 				payment.ProviderPayload = models.JSON(createResult.Raw)
 			}
+			if cfg.NeedsCurrencyConversion() {
+				appendExchangeInfo(payment, payAmount, cfg.ExchangeRate, originalAmount, originalCurrency)
+			}
 			payment.UpdatedAt = time.Now()
 			if err := s.paymentRepo.Update(payment); err != nil {
 				return ErrPaymentUpdateFailed
 			}
 			return nil
 		case constants.PaymentChannelTypeWechat:
-			payment.Currency = "CNY"
 			cfg, err := wechatpay.ParseConfig(channel.ConfigJSON)
 			if err != nil {
 				return fmt.Errorf("%w: %v", ErrPaymentChannelConfigInvalid, err)
@@ -395,13 +440,28 @@ func (s *PaymentService) applyProviderPayment(input CreatePaymentInput, order *m
 			if err := wechatpay.ValidateConfig(cfg, channel.InteractionMode); err != nil {
 				return fmt.Errorf("%w: %v", ErrPaymentChannelConfigInvalid, err)
 			}
+			originalAmount := payment.Amount.String()
+			originalCurrency := payment.Currency
+			payAmount := originalAmount
+			payCurrency := originalCurrency
+			if cfg.NeedsCurrencyConversion() {
+				converted, targetCur, convErr := cfg.ConvertAmount(payAmount, payCurrency, 2)
+				if convErr != nil {
+					return fmt.Errorf("%w: %v", ErrPaymentChannelConfigInvalid, convErr)
+				}
+				payAmount = converted
+				payCurrency = targetCur
+			} else {
+				payCurrency = "CNY"
+			}
+			payment.Currency = payCurrency
 			cfgForCreate := *cfg
 			cfgForCreate.H5RedirectURL = appendURLQuery(cfg.H5RedirectURL, buildPaymentReturnQuery(input, order, "wechat_return", ""))
 			createResult, err := wechatpay.CreatePayment(gatewayCtx, &cfgForCreate, wechatpay.CreateInput{
 				OrderNo:     order.OrderNo,
 				PaymentID:   payment.ID,
-				Amount:      payment.Amount.String(),
-				Currency:    payment.Currency,
+				Amount:      payAmount,
+				Currency:    payCurrency,
 				Description: buildOrderSubject(order),
 				ClientIP:    strings.TrimSpace(input.ClientIP),
 				NotifyURL:   cfg.NotifyURL,
@@ -425,6 +485,9 @@ func (s *PaymentService) applyProviderPayment(input CreatePaymentInput, order *m
 			if createResult.Raw != nil {
 				payment.ProviderPayload = models.JSON(createResult.Raw)
 			}
+			if cfg.NeedsCurrencyConversion() {
+				appendExchangeInfo(payment, payAmount, cfg.ExchangeRate, originalAmount, originalCurrency)
+			}
 			payment.UpdatedAt = time.Now()
 			if err := s.paymentRepo.Update(payment); err != nil {
 				return ErrPaymentUpdateFailed
@@ -438,11 +501,24 @@ func (s *PaymentService) applyProviderPayment(input CreatePaymentInput, order *m
 			if err := stripe.ValidateConfig(cfg); err != nil {
 				return fmt.Errorf("%w: %v", ErrPaymentChannelConfigInvalid, err)
 			}
+			originalAmount := payment.Amount.String()
+			originalCurrency := payment.Currency
+			payAmount := originalAmount
+			payCurrency := originalCurrency
+			if cfg.NeedsCurrencyConversion() {
+				converted, targetCur, convErr := cfg.ConvertAmount(payAmount, payCurrency, 2)
+				if convErr != nil {
+					return fmt.Errorf("%w: %v", ErrPaymentChannelConfigInvalid, convErr)
+				}
+				payAmount = converted
+				payCurrency = targetCur
+				payment.Currency = payCurrency
+			}
 			createResult, err := stripe.CreatePayment(gatewayCtx, cfg, stripe.CreateInput{
 				OrderNo:     order.OrderNo,
 				PaymentID:   payment.ID,
-				Amount:      payment.Amount.String(),
-				Currency:    payment.Currency,
+				Amount:      payAmount,
+				Currency:    payCurrency,
 				Description: buildOrderSubject(order),
 				SuccessURL:  appendURLQuery(cfg.SuccessURL, buildPaymentReturnQuery(input, order, "stripe_return", "{CHECKOUT_SESSION_ID}")),
 				CancelURL:   appendURLQuery(cfg.CancelURL, buildPaymentReturnQuery(input, order, "stripe_cancel", "")),
@@ -456,6 +532,9 @@ func (s *PaymentService) applyProviderPayment(input CreatePaymentInput, order *m
 			payment.ProviderRef = pickFirstNonEmpty(strings.TrimSpace(createResult.SessionID), strings.TrimSpace(createResult.PaymentIntentID), order.OrderNo)
 			if createResult.Raw != nil {
 				payment.ProviderPayload = models.JSON(createResult.Raw)
+			}
+			if cfg.NeedsCurrencyConversion() {
+				appendExchangeInfo(payment, payAmount, cfg.ExchangeRate, originalAmount, originalCurrency)
 			}
 			payment.UpdatedAt = time.Now()
 			if err := s.paymentRepo.Update(payment); err != nil {

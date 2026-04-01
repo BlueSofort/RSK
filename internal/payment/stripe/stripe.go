@@ -81,6 +81,7 @@ var zeroDecimalCurrencies = map[string]struct{}{
 
 // Config Stripe 渠道配置。
 type Config struct {
+	common.ExchangeRateConfig
 	SecretKey               string   `json:"secret_key"`
 	PublishableKey          string   `json:"publishable_key"`
 	WebhookSecret           string   `json:"webhook_secret"`
@@ -573,6 +574,7 @@ func (c *Config) Normalize() {
 		sort.Strings(normalized)
 		c.PaymentMethodTypes = normalized
 	}
+	c.ExchangeRateConfig.NormalizeExchangeRate()
 }
 
 func toMinorAmount(amount string, currency string) (int64, error) {

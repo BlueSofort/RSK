@@ -57,6 +57,7 @@ const (
 
 // Config 支付宝官方配置。
 type Config struct {
+	common.ExchangeRateConfig
 	AppID            string `json:"app_id"`
 	PrivateKey       string `json:"private_key"`
 	AlipayPublicKey  string `json:"alipay_public_key"`
@@ -626,4 +627,5 @@ func (c *Config) Normalize() {
 	if c.GatewayURL == "" {
 		c.GatewayURL = alipayGatewayDefault
 	}
+	c.ExchangeRateConfig.NormalizeExchangeRate()
 }
