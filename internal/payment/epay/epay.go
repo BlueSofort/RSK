@@ -56,6 +56,7 @@ var (
 
 // Config 易支付配置
 type Config struct {
+	common.ExchangeRateConfig
 	GatewayURL  string `json:"gateway_url"`         // 网关地址
 	EpayVersion string `json:"epay_version"`        // 版本（v1/v2）
 	MerchantID  string `json:"merchant_id"`         // 商户号
@@ -211,6 +212,7 @@ func (c *Config) Normalize() {
 	if c.Device == "" {
 		c.Device = epayDevicePC
 	}
+	c.ExchangeRateConfig.NormalizeExchangeRate()
 }
 
 func createV1(ctx context.Context, cfg *Config, input CreateInput, payType string) (*CreateResult, error) {
