@@ -53,6 +53,7 @@ func (h *Handler) GetProcurementOrders(c *gin.Context) {
 		shared.RespondError(c, response.CodeInternal, "error.procurement_fetch_failed", err)
 		return
 	}
+
 	pagination := response.BuildPagination(page, pageSize, total)
 	response.SuccessWithPage(c, orders, pagination)
 }
@@ -78,6 +79,7 @@ func (h *Handler) GetProcurementOrder(c *gin.Context) {
 		return
 	}
 	order.TruncateUpstreamPayload(models.FulfillmentPayloadMaxPreviewLines)
+	h.ProcurementOrderService.FillParentOrderNo(order)
 	response.Success(c, order)
 }
 

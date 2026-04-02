@@ -30,8 +30,9 @@ type ProcurementOrder struct {
 	UpdatedAt                time.Time      `gorm:"index" json:"updated_at"`
 	DeletedAt                gorm.DeletedAt `gorm:"index" json:"-"`
 
-	Connection *SiteConnection `gorm:"foreignKey:ConnectionID" json:"connection,omitempty"`
-	LocalOrder *Order          `gorm:"foreignKey:LocalOrderID" json:"local_order,omitempty"`
+	Connection    *SiteConnection `gorm:"foreignKey:ConnectionID" json:"connection,omitempty"`
+	LocalOrder    *Order          `gorm:"foreignKey:LocalOrderID" json:"local_order,omitempty"`
+	ParentOrderNo string          `gorm:"-" json:"parent_order_no,omitempty"` // 父订单号（虚拟字段）
 }
 
 // TruncateUpstreamPayload 截断超长的上游交付内容。

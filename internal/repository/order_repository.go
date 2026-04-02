@@ -13,6 +13,7 @@ import (
 type OrderRepository interface {
 	Create(order *models.Order, items []models.OrderItem) error
 	GetByID(id uint) (*models.Order, error)
+	GetByIDs(ids []uint) ([]models.Order, error)
 	ResolveReceiverEmailByOrderID(orderID uint) (string, error)
 	GetByIDAndUser(id uint, userID uint) (*models.Order, error)
 	GetByOrderNoAndUser(orderNo string, userID uint) (*models.Order, error)
@@ -78,6 +79,18 @@ func (r *GormOrderRepository) GetByID(id uint) (*models.Order, error) {
 		return nil, err
 	}
 	return &order, nil
+}
+
+// GetByIDs 根据 ID 列表批量获取订单
+func (r *GormOrderRepository) GetByIDs(ids []uint) ([]models.Order, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	var orders []models.Order
+	if err := r.db.Where("id IN ?", ids).Find(&orders).Error; err != nil {
+		return nil, err
+	}
+	return orders, nil
 }
 
 // ResolveReceiverEmailByOrderID 根据订单 ID 解析状态通知的收件邮箱。
