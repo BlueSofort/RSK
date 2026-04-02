@@ -690,7 +690,57 @@ func (s *ProcurementOrderService) GetByLocalOrderNo(localOrderNo string) (*model
 
 // List 列表查询采购单
 func (s *ProcurementOrderService) List(filter repository.ProcurementOrderListFilter) ([]models.ProcurementOrder, int64, error) {
-	return s.procRepo.List(filter)
+	orders, total, err := s.procRepo.List(filter)
+	if err != nil {
+		return nil, 0, err
+	}
+	s.fillParentOrderNos(orders)
+	return orders, total, nil
+}
+
+// FillParentOrderNo 为单个采购单填充父订单号
+func (s *ProcurementOrderService) FillParentOrderNo(order *models.ProcurementOrder) {
+	if order == nil || order.LocalOrder == nil || order.LocalOrder.ParentID == nil {
+		return
+	}
+	parentOrder, err := s.orderRepo.GetByID(*order.LocalOrder.ParentID)
+	if err == nil && parentOrder != nil {
+		order.ParentOrderNo = parentOrder.OrderNo
+	}
+}
+
+// fillParentOrderNos 为采购单批量填充父订单号
+func (s *ProcurementOrderService) fillParentOrderNos(orders []models.ProcurementOrder) {
+	// 收集需要查询的父订单 ID
+	parentIDs := make(map[uint]bool)
+	for i := range orders {
+		if orders[i].LocalOrder != nil && orders[i].LocalOrder.ParentID != nil {
+			parentIDs[*orders[i].LocalOrder.ParentID] = true
+		}
+	}
+	if len(parentIDs) == 0 {
+		return
+	}
+
+	ids := make([]uint, 0, len(parentIDs))
+	for id := range parentIDs {
+		ids = append(ids, id)
+	}
+
+	parentOrders, err := s.orderRepo.GetByIDs(ids)
+	if err != nil {
+		return
+	}
+	parentMap := make(map[uint]string, len(parentOrders))
+	for _, o := range parentOrders {
+		parentMap[o.ID] = o.OrderNo
+	}
+
+	for i := range orders {
+		if orders[i].LocalOrder != nil && orders[i].LocalOrder.ParentID != nil {
+			orders[i].ParentOrderNo = parentMap[*orders[i].LocalOrder.ParentID]
+		}
+	}
 }
 
 // RetryManual 手动重试失败的采购单
