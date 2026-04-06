@@ -18,7 +18,6 @@ func TestVerifyCallbackOwnershipV1Success(t *testing.T) {
 		"trade_no":     "EPAY-2001",
 		"money":        "10.00",
 		"trade_status": constants.EpayTradeStatusSuccess,
-		"param":        "123",
 	})
 
 	if err := VerifyCallback(cfg, form); err != nil {
@@ -73,7 +72,6 @@ func TestVerifyCallbackOwnershipV2Success(t *testing.T) {
 		"money":        "20.00",
 		"trade_status": constants.EpayTradeStatusSuccess,
 		"timestamp":    "1721206072",
-		"param":        "456",
 	})
 
 	if err := VerifyCallback(cfg, form); err != nil {

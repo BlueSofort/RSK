@@ -17,6 +17,7 @@ type PaymentRepository interface {
 	Update(payment *models.Payment) error
 	GetByID(id uint) (*models.Payment, error)
 	GetByIDs(ids []uint) ([]models.Payment, error)
+	GetByGatewayOrderNo(gatewayOrderNo string) (*models.Payment, error)
 	GetLatestByProviderRef(providerRef string) (*models.Payment, error)
 	ListByOrderID(orderID uint) ([]models.Payment, error)
 	GetLatestPendingByOrder(orderID uint, now time.Time) (*models.Payment, error)
@@ -75,6 +76,23 @@ func (r *GormPaymentRepository) GetByIDs(ids []uint) ([]models.Payment, error) {
 		return nil, err
 	}
 	return payments, nil
+}
+
+// GetByGatewayOrderNo 根据网关订单号获取支付记录
+func (r *GormPaymentRepository) GetByGatewayOrderNo(gatewayOrderNo string) (*models.Payment, error) {
+	gatewayOrderNo = strings.TrimSpace(gatewayOrderNo)
+	if gatewayOrderNo == "" {
+		return nil, nil
+	}
+	var payment models.Payment
+	result := r.db.Where("gateway_order_no = ?", gatewayOrderNo).Order("id desc").Limit(1).Find(&payment)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	if result.RowsAffected == 0 {
+		return nil, nil
+	}
+	return &payment, nil
 }
 
 // GetLatestByProviderRef 根据第三方流水号获取最新支付记录

@@ -23,31 +23,26 @@ func (h *Handler) HandleEpayCallback(c *gin.Context) bool {
 		log.Warnw("epay_callback_form_parse_failed", "error", err)
 		return false
 	}
-	if strings.TrimSpace(getFirstValue(form, "param")) == "" {
-		log.Debugw("epay_callback_not_matched", "reason", "missing_param")
+	outTradeNo := strings.TrimSpace(getFirstValue(form, "out_trade_no"))
+	pid := strings.TrimSpace(getFirstValue(form, "pid"))
+	if pid == "" || outTradeNo == "" {
+		log.Debugw("epay_callback_not_matched", "reason", "missing_pid_or_out_trade_no")
 		return false
 	}
-	if strings.TrimSpace(getFirstValue(form, "trade_status")) == "" && strings.TrimSpace(getFirstValue(form, "out_trade_no")) == "" {
-		log.Debugw("epay_callback_not_matched", "reason", "missing_trade_fields")
+	if strings.TrimSpace(getFirstValue(form, "trade_status")) == "" {
+		log.Debugw("epay_callback_not_matched", "reason", "missing_trade_status")
 		return false
 	}
 	log.Infow("epay_callback_received",
 		"client_ip", c.ClientIP(),
-		"param", strings.TrimSpace(getFirstValue(form, "param")),
-		"out_trade_no", strings.TrimSpace(getFirstValue(form, "out_trade_no")),
+		"out_trade_no", outTradeNo,
 		"trade_no", strings.TrimSpace(getFirstValue(form, "trade_no")),
 		"trade_status", strings.TrimSpace(getFirstValue(form, "trade_status")),
 		"raw_form", callbackRawFormForLog(form),
 	)
-	paymentID, err := parseEpayPaymentID(form)
-	if err != nil {
-		log.Warnw("epay_callback_payment_id_invalid", "error", err)
-		c.String(200, constants.EpayCallbackFail)
-		return true
-	}
-	payment, err := h.PaymentRepo.GetByID(paymentID)
+	payment, err := h.PaymentRepo.GetByGatewayOrderNo(outTradeNo)
 	if err != nil || payment == nil {
-		log.Warnw("epay_callback_payment_not_found", "payment_id", paymentID, "error", err)
+		log.Warnw("epay_callback_payment_not_found", "out_trade_no", outTradeNo, "error", err)
 		c.String(200, constants.EpayCallbackFail)
 		return true
 	}
@@ -121,7 +116,7 @@ func (h *Handler) HandleEpayCallback(c *gin.Context) bool {
 		c.String(200, constants.EpayCallbackFail)
 		return true
 	}
-	input, err := parseEpayCallback(form)
+	input, err := parseEpayCallback(form, payment.ID)
 	if err != nil {
 		log.Warnw("epay_callback_parse_failed",
 			"payment_id", payment.ID,
@@ -171,19 +166,7 @@ func (h *Handler) HandleEpayCallback(c *gin.Context) bool {
 	return true
 }
 
-func parseEpayPaymentID(form map[string][]string) (uint, error) {
-	param := strings.TrimSpace(getFirstValue(form, "param"))
-	if param == "" {
-		return 0, service.ErrPaymentInvalid
-	}
-	parsedID, err := shared.ParseQueryUint(param, true)
-	if err != nil {
-		return 0, service.ErrPaymentInvalid
-	}
-	return parsedID, nil
-}
-
-func parseEpayCallback(form map[string][]string) (*service.PaymentCallbackInput, error) {
+func parseEpayCallback(form map[string][]string, paymentID uint) (*service.PaymentCallbackInput, error) {
 	orderNo := strings.TrimSpace(getFirstValue(form, "out_trade_no"))
 	tradeStatus := strings.TrimSpace(getFirstValue(form, "trade_status"))
 	status := constants.PaymentStatusFailed
@@ -208,10 +191,6 @@ func parseEpayCallback(form map[string][]string) (*service.PaymentCallbackInput,
 		if len(values) > 0 {
 			payload[key] = values[0]
 		}
-	}
-	paymentID, err := parseEpayPaymentID(form)
-	if err != nil {
-		return nil, err
 	}
 	return &service.PaymentCallbackInput{
 		PaymentID:   paymentID,

@@ -31,7 +31,6 @@ func TestBuildRedirectURLV1(t *testing.T) {
 		ChannelType: constants.PaymentChannelTypeAlipay,
 		NotifyURL:   cfg.NotifyURL,
 		ReturnURL:   cfg.ReturnURL,
-		Param:       "123",
 	})
 	if err != nil {
 		t.Fatalf("BuildRedirectURL v1 failed: %v", err)
@@ -57,9 +56,6 @@ func TestBuildRedirectURLV1(t *testing.T) {
 	if got := query.Get("return_url"); got != cfg.ReturnURL {
 		t.Fatalf("return_url = %s", got)
 	}
-	if got := query.Get("param"); got != "123" {
-		t.Fatalf("param = %s", got)
-	}
 	if got := query.Get("sign_type"); got != epaySignTypeMD5 {
 		t.Fatalf("sign_type = %s, want %s", got, epaySignTypeMD5)
 	}
@@ -71,7 +67,6 @@ func TestBuildRedirectURLV1(t *testing.T) {
 		"return_url":   cfg.ReturnURL,
 		"name":         "测试订单",
 		"money":        "88.00",
-		"param":        "123",
 	}) + cfg.MerchantKey)
 	if got := query.Get("sign"); got != expectedSign {
 		t.Fatalf("sign = %s, want %s", got, expectedSign)
@@ -99,7 +94,6 @@ func TestBuildRedirectURLV2(t *testing.T) {
 		ChannelType: constants.PaymentChannelTypeWechat,
 		NotifyURL:   cfg.NotifyURL,
 		ReturnURL:   cfg.ReturnURL,
-		Param:       "456",
 	})
 	if err != nil {
 		t.Fatalf("BuildRedirectURL v2 failed: %v", err)
@@ -133,7 +127,6 @@ func TestBuildRedirectURLV2(t *testing.T) {
 		"return_url":   cfg.ReturnURL,
 		"name":         "测试订单2",
 		"money":        "66.00",
-		"param":        "456",
 		"timestamp":    query.Get("timestamp"),
 	})
 	if err := verifyRSA(signContent, query.Get("sign"), publicKeyPEM); err != nil {

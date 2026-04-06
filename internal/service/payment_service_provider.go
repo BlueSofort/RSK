@@ -87,7 +87,6 @@ func (s *PaymentService) applyProviderPayment(input CreatePaymentInput, order *m
 		notifyURL := strings.TrimSpace(cfg.NotifyURL)
 		returnURL := appendURLQuery(cfg.ReturnURL, buildPaymentReturnQuery(input, order, "epay_return", ""))
 		subject := buildOrderSubject(order)
-		param := strconv.FormatUint(uint64(payment.ID), 10)
 		createInput := epay.CreateInput{
 			OrderNo:     providerOrderNo,
 			PaymentID:   payment.ID,
@@ -97,7 +96,6 @@ func (s *PaymentService) applyProviderPayment(input CreatePaymentInput, order *m
 			ClientIP:    strings.TrimSpace(input.ClientIP),
 			NotifyURL:   notifyURL,
 			ReturnURL:   returnURL,
-			Param:       param,
 		}
 		if notifyURL == "" || returnURL == "" {
 			return fmt.Errorf("%w: notify_url/return_url is required", ErrPaymentChannelConfigInvalid)
