@@ -33,6 +33,7 @@ type OrderService struct {
 	walletService      *WalletService
 	affiliateSvc       *AffiliateService
 	memberLevelService *MemberLevelService
+	riskControlSvc     *OrderRiskControlService
 	expireMinutes      int
 }
 
@@ -52,6 +53,7 @@ type OrderServiceOptions struct {
 	WalletService      *WalletService
 	AffiliateService   *AffiliateService
 	MemberLevelService *MemberLevelService
+	RiskControlService *OrderRiskControlService
 	ExpireMinutes      int
 }
 
@@ -72,6 +74,7 @@ func NewOrderService(opts OrderServiceOptions) *OrderService {
 		walletService:      opts.WalletService,
 		affiliateSvc:       opts.AffiliateService,
 		memberLevelService: opts.MemberLevelService,
+		riskControlSvc:     opts.RiskControlService,
 		expireMinutes:      opts.ExpireMinutes,
 	}
 }
@@ -310,6 +313,19 @@ func (s *OrderService) createOrder(input orderCreateParams) (*models.Order, erro
 	if s.queueClient == nil || !s.queueClient.Enabled() {
 		return nil, ErrQueueUnavailable
 	}
+
+	// 风控检查（在锁库存之前）
+	if s.riskControlSvc != nil {
+		if err := s.riskControlSvc.CheckOrderAllowed(RiskCheckInput{
+			UserID:     input.UserID,
+			GuestEmail: input.GuestEmail,
+			ClientIP:   input.ClientIP,
+			IsGuest:    input.IsGuest,
+		}); err != nil {
+			return nil, err
+		}
+	}
+
 	result, err := s.buildOrderResult(input)
 	if err != nil {
 		return nil, err

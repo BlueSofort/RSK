@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/dujiao-next/internal/constants"
 	"github.com/dujiao-next/internal/models"
 
 	"gorm.io/gorm"
@@ -27,6 +28,9 @@ type OrderRepository interface {
 	ListAdmin(filter OrderListFilter) ([]models.Order, int64, error)
 	UpdateStatus(id uint, status string, updates map[string]interface{}) error
 	CountOrderItemsByProduct(productID uint) (int64, error)
+	CountPendingByUserID(userID uint) (int64, error)
+	CountPendingByClientIP(clientIP string) (int64, error)
+	CountPendingByGuestEmail(email string) (int64, error)
 	Transaction(fn func(tx *gorm.DB) error) error
 	WithTx(tx *gorm.DB) *GormOrderRepository
 }
@@ -378,6 +382,48 @@ func (r *GormOrderRepository) ListByGuest(email, password string, page, pageSize
 		return nil, 0, err
 	}
 	return orders, total, nil
+}
+
+// CountPendingByUserID 统计用户待支付的父订单数量
+func (r *GormOrderRepository) CountPendingByUserID(userID uint) (int64, error) {
+	if userID == 0 {
+		return 0, nil
+	}
+	var count int64
+	if err := r.db.Model(&models.Order{}).
+		Where("user_id = ? AND status = ? AND parent_id IS NULL", userID, constants.OrderStatusPendingPayment).
+		Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+// CountPendingByClientIP 统计某 IP 待支付的父订单数量
+func (r *GormOrderRepository) CountPendingByClientIP(clientIP string) (int64, error) {
+	if clientIP == "" {
+		return 0, nil
+	}
+	var count int64
+	if err := r.db.Model(&models.Order{}).
+		Where("client_ip = ? AND status = ? AND parent_id IS NULL", clientIP, constants.OrderStatusPendingPayment).
+		Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+// CountPendingByGuestEmail 统计游客邮箱待支付的父订单数量
+func (r *GormOrderRepository) CountPendingByGuestEmail(email string) (int64, error) {
+	if email == "" {
+		return 0, nil
+	}
+	var count int64
+	if err := r.db.Model(&models.Order{}).
+		Where("guest_email = ? AND status = ? AND parent_id IS NULL", email, constants.OrderStatusPendingPayment).
+		Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 // CountOrderItemsByProduct 统计商品关联的订单项数量

@@ -3,6 +3,7 @@ package channel
 import (
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/dujiao-next/internal/http/handlers/shared"
@@ -23,6 +24,10 @@ type mappedChannelError struct {
 }
 
 var channelOrderCreateErrorRules = []mappedChannelError{
+	{target: service.ErrRiskIPBlacklisted, httpCode: http.StatusForbidden, code: response.CodeForbidden, errorCode: "risk_blocked", key: "error.risk_ip_blacklisted"},
+	{target: service.ErrRiskEmailBlacklisted, httpCode: http.StatusForbidden, code: response.CodeForbidden, errorCode: "risk_blocked", key: "error.risk_email_blacklisted"},
+	{target: service.ErrRiskTooManyPendingOrders, httpCode: http.StatusTooManyRequests, code: response.CodeTooManyRequests, errorCode: "risk_blocked", key: "error.risk_too_many_pending_orders"},
+	{target: service.ErrRiskOrderRateLimited, httpCode: http.StatusTooManyRequests, code: response.CodeTooManyRequests, errorCode: "risk_blocked", key: "error.risk_order_rate_limited"},
 	{target: service.ErrProductSKURequired, httpCode: http.StatusBadRequest, code: response.CodeBadRequest, errorCode: "validation_error", key: "error.order_item_invalid"},
 	{target: service.ErrProductSKUInvalid, httpCode: http.StatusBadRequest, code: response.CodeBadRequest, errorCode: "sku_not_found", key: "error.order_item_invalid"},
 	{target: service.ErrInvalidOrderItem, httpCode: http.StatusBadRequest, code: response.CodeBadRequest, errorCode: "validation_error", key: "error.order_item_invalid"},
@@ -105,6 +110,11 @@ func respondChannelBindError(c *gin.Context, err error) {
 }
 
 func respondChannelMappedError(c *gin.Context, err error, rules []mappedChannelError, fallbackHTTPCode, fallbackCode int, fallbackErrorCode, fallbackKey string) {
+	// 频率限制特殊处理：添加 Retry-After header
+	if retryAfter := service.GetRetryAfter(err); retryAfter > 0 {
+		c.Header("Retry-After", strconv.FormatInt(retryAfter, 10))
+	}
+
 	for _, rule := range rules {
 		if errors.Is(err, rule.target) {
 			respondChannelError(c, rule.httpCode, rule.code, rule.errorCode, rule.key, nil)

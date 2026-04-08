@@ -97,6 +97,7 @@ type Container struct {
 	MemberLevelService        *service.MemberLevelService
 	AdProxyService            *service.AdProxyService
 	MediaService              *service.MediaService
+	OrderRiskControlService   *service.OrderRiskControlService
 }
 
 // NewContainer 初始化容器
@@ -222,6 +223,7 @@ func (c *Container) initServices() {
 	c.CartService = service.NewCartService(c.CartRepo, c.ProductRepo, c.ProductSKURepo, c.PromotionRepo, c.SettingService)
 	c.WalletService = service.NewWalletService(c.WalletRepo, c.OrderRepo, c.UserRepo, c.AffiliateService)
 	c.MemberLevelService = service.NewMemberLevelService(c.MemberLevelRepo, c.MemberLevelPriceRepo, c.UserRepo)
+	c.OrderRiskControlService = service.NewOrderRiskControlService(c.SettingService, c.OrderRepo)
 	c.OrderService = service.NewOrderService(service.OrderServiceOptions{
 		OrderRepo:          c.OrderRepo,
 		UserRepo:           c.UserRepo,
@@ -237,6 +239,7 @@ func (c *Container) initServices() {
 		WalletService:      c.WalletService,
 		AffiliateService:   c.AffiliateService,
 		MemberLevelService: c.MemberLevelService,
+		RiskControlService: c.OrderRiskControlService,
 		ExpireMinutes:      c.Config.Order.PaymentExpireMinutes,
 	})
 	c.FulfillmentService = service.NewFulfillmentService(

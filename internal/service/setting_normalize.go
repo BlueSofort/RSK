@@ -50,6 +50,9 @@ func normalizeSettingValueByKey(key string, value map[string]interface{}) models
 		return normalizeNavConfig(value)
 	case constants.SettingKeyRegistrationConfig:
 		return normalizeRegistrationSetting(value)
+	case constants.SettingKeyOrderRiskControlConfig:
+		cfg := orderRiskControlConfigFromJSON(models.JSON(value), DefaultOrderRiskControlConfig())
+		return OrderRiskControlConfigToMap(cfg)
 	case constants.SettingKeyCallbackRoutesConfig:
 		return normalizeCallbackRoutesSetting(value)
 	default:

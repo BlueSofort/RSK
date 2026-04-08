@@ -2,9 +2,12 @@ package public
 
 import (
 	"errors"
+	"fmt"
+	"strconv"
 
 	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/http/response"
+	"github.com/dujiao-next/internal/i18n"
 	"github.com/dujiao-next/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -18,6 +21,15 @@ type mappedHandlerError struct {
 }
 
 func respondWithMappedError(c *gin.Context, err error, rules []mappedHandlerError, fallbackCode int, fallbackKey string) {
+	// 频率限制特殊处理：添加 Retry-After header，消息包含等待秒数
+	if retryAfter := service.GetRetryAfter(err); retryAfter > 0 {
+		c.Header("Retry-After", strconv.FormatInt(retryAfter, 10))
+		locale := i18n.ResolveLocale(c)
+		msg := fmt.Sprintf("%s (%ds)", i18n.T(locale, "error.risk_order_rate_limited"), retryAfter)
+		response.Error(c, response.CodeTooManyRequests, msg)
+		return
+	}
+
 	for _, rule := range rules {
 		if errors.Is(err, rule.target) {
 			shared.RespondError(c, rule.code, rule.key, nil)
@@ -37,6 +49,13 @@ func concatMappedHandlerErrors(groups ...[]mappedHandlerError) []mappedHandlerEr
 		result = append(result, group...)
 	}
 	return result
+}
+
+var orderRiskControlErrorRules = []mappedHandlerError{
+	{target: service.ErrRiskIPBlacklisted, code: response.CodeForbidden, key: "error.risk_ip_blacklisted"},
+	{target: service.ErrRiskEmailBlacklisted, code: response.CodeForbidden, key: "error.risk_email_blacklisted"},
+	{target: service.ErrRiskTooManyPendingOrders, code: response.CodeTooManyRequests, key: "error.risk_too_many_pending_orders"},
+	{target: service.ErrRiskOrderRateLimited, code: response.CodeTooManyRequests, key: "error.risk_order_rate_limited"},
 }
 
 var userOrderCommonErrorRules = []mappedHandlerError{
@@ -161,11 +180,11 @@ func respondUserOrderPreviewError(c *gin.Context, err error) {
 }
 
 func respondUserOrderCreateError(c *gin.Context, err error) {
-	respondWithMappedError(c, err, userOrderCommonErrorRules, response.CodeInternal, "error.order_create_failed")
+	respondWithMappedError(c, err, concatMappedHandlerErrors(orderRiskControlErrorRules, userOrderCommonErrorRules), response.CodeInternal, "error.order_create_failed")
 }
 
 func respondGuestOrderCreateError(c *gin.Context, err error) {
-	respondWithMappedError(c, err, concatMappedHandlerErrors(guestOrderCommonErrorRules, guestOrderCreateExtraErrorRules), response.CodeInternal, "error.order_create_failed")
+	respondWithMappedError(c, err, concatMappedHandlerErrors(orderRiskControlErrorRules, guestOrderCommonErrorRules, guestOrderCreateExtraErrorRules), response.CodeInternal, "error.order_create_failed")
 }
 
 func respondGuestOrderPreviewError(c *gin.Context, err error) {

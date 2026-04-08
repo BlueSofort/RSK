@@ -56,8 +56,8 @@ const (
 
 // 支付渠道付款角色常量
 const (
-	PaymentRoleGuest = "guest"
-	PaymentRoleMember  = "member"
+	PaymentRoleGuest  = "guest"
+	PaymentRoleMember = "member"
 )
 
 // 支付付款类型常量
@@ -406,6 +406,8 @@ const (
 	SettingKeyRegistrationConfig         = "registration_config"
 	SettingFieldRegistrationEnabled      = "registration_enabled"
 	SettingFieldEmailVerificationEnabled = "email_verification_enabled"
+
+	SettingKeyOrderRiskControlConfig = "order_risk_control_config"
 
 	SettingKeyCallbackRoutesConfig = "callback_routes_config"
 	SettingFieldPaymentCallback    = "payment_callback"
