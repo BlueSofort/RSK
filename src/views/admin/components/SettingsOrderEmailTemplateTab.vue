@@ -89,6 +89,8 @@ const templateVariables = [
   { key: 'amount', label: () => t('admin.settings.orderEmailTemplate.variableList.amount') },
   { key: 'currency', label: () => t('admin.settings.orderEmailTemplate.variableList.currency') },
   { key: 'fulfillment_info', label: () => t('admin.settings.orderEmailTemplate.variableList.fulfillment_info') },
+  { key: 'site_name', label: () => t('admin.settings.orderEmailTemplate.variableList.site_name') },
+  { key: 'site_url', label: () => t('admin.settings.orderEmailTemplate.variableList.site_url') },
 ]
 
 const notifyErrorIfNeeded = (err: unknown, fallback: string) => {
