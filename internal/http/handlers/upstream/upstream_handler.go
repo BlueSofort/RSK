@@ -134,6 +134,45 @@ func (h *Handler) Ping(c *gin.Context) {
 	})
 }
 
+// ---- ListCategories ----
+
+// upstreamCategory 上游分类响应格式
+type upstreamCategory struct {
+	ID        uint        `json:"id"`
+	ParentID  uint        `json:"parent_id"`
+	Slug      string      `json:"slug"`
+	Name      models.JSON `json:"name"`
+	Icon      string      `json:"icon"`
+	SortOrder int         `json:"sort_order"`
+}
+
+// ListCategories GET /api/v1/upstream/categories
+func (h *Handler) ListCategories(c *gin.Context) {
+	categories, err := h.CategoryRepo.List()
+	if err != nil {
+		logger.Errorw("upstream_list_categories_failed", "error", err)
+		errorResponse(c, http.StatusInternalServerError, "internal_error", "failed to list categories")
+		return
+	}
+
+	items := make([]upstreamCategory, 0, len(categories))
+	for _, cat := range categories {
+		items = append(items, upstreamCategory{
+			ID:        cat.ID,
+			ParentID:  cat.ParentID,
+			Slug:      cat.Slug,
+			Name:      cat.NameJSON,
+			Icon:      cat.Icon,
+			SortOrder: cat.SortOrder,
+		})
+	}
+
+	successResponse(c, gin.H{
+		"ok":         true,
+		"categories": items,
+	})
+}
+
 // ---- ListProducts ----
 
 // upstreamProduct 上游商品响应格式

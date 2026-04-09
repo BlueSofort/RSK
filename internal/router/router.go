@@ -169,6 +169,7 @@ func SetupRouter(cfg *config.Config, c *provider.Container) *gin.Engine {
 		upstreamAPI.Use(UpstreamAPIAuthMiddleware(c.ApiCredentialRepo))
 		{
 			upstreamAPI.POST("/ping", upstreamHandler.Ping)
+			upstreamAPI.GET("/categories", upstreamHandler.ListCategories)
 			upstreamAPI.GET("/products", upstreamHandler.ListProducts)
 			upstreamAPI.GET("/products/:id", upstreamHandler.GetProduct)
 			upstreamAPI.POST("/orders", upstreamHandler.CreateOrder)
@@ -434,6 +435,8 @@ func SetupRouter(cfg *config.Config, c *provider.Container) *gin.Engine {
 				authorized.POST("/product-mappings/batch-status", adminHandler.BatchUpdateProductMappingStatus)
 				authorized.POST("/product-mappings/batch-delete", adminHandler.BatchDeleteProductMappings)
 				authorized.GET("/upstream-products", adminHandler.ListUpstreamProducts)
+				authorized.GET("/upstream-categories", adminHandler.ListUpstreamCategories)
+				authorized.POST("/product-mappings/batch-import-by-category", adminHandler.BatchImportByCategory)
 
 				// 采购单管理
 				authorized.GET("/procurement-orders", adminHandler.GetProcurementOrders)

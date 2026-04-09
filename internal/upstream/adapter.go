@@ -48,8 +48,25 @@ type UpstreamProduct struct {
 	FulfillmentType  string        `json:"fulfillment_type"`
 	ManualFormSchema models.JSON   `json:"manual_form_schema"`
 	IsActive         bool          `json:"is_active"`
+	CategoryID       uint          `json:"category_id"`
 	SKUs             []UpstreamSKU `json:"skus"`
 	UpdatedAt        time.Time     `json:"updated_at"`
+}
+
+// UpstreamCategory 上游分类信息
+type UpstreamCategory struct {
+	ID        uint        `json:"id"`
+	ParentID  uint        `json:"parent_id"`
+	Slug      string      `json:"slug"`
+	Name      models.JSON `json:"name"`
+	Icon      string      `json:"icon"`
+	SortOrder int         `json:"sort_order"`
+}
+
+// CategoryListResult 分类列表结果
+type CategoryListResult struct {
+	Supported  bool               `json:"supported"`
+	Categories []UpstreamCategory `json:"categories"`
 }
 
 // UpstreamSKU 上游 SKU 信息
@@ -110,6 +127,9 @@ type UpstreamOrderDetail struct {
 type Adapter interface {
 	// Ping 连接测试
 	Ping(ctx context.Context) (*PingResult, error)
+
+	// ListCategories 拉取上游分类列表
+	ListCategories(ctx context.Context) (*CategoryListResult, error)
 
 	// ListProducts 拉取上游商品列表
 	ListProducts(ctx context.Context, opts ListProductsOpts) (*ProductListResult, error)
