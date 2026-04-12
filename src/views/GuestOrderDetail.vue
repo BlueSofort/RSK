@@ -98,6 +98,32 @@
           </div>
         </div>
 
+        <div v-if="showRefundRecordsCard" class="theme-panel rounded-2xl p-6">
+          <h2 class="text-lg font-bold mb-4">{{ t('orderDetail.refundRecordsTitle') }}</h2>
+          <div v-if="refundRecords.length > 0" class="overflow-x-auto rounded-xl border border-gray-200/70 dark:border-white/10">
+            <table class="min-w-full divide-y divide-gray-200 text-left text-sm dark:divide-white/10">
+              <thead class="bg-gray-50/80 text-xs uppercase tracking-wide text-gray-500 dark:bg-white/5 dark:text-gray-400">
+                <tr>
+                  <th class="px-4 py-3 font-semibold">{{ t('orderDetail.refundRecordTime') }}</th>
+                  <th class="px-4 py-3 font-semibold">{{ t('orderDetail.refundRecordAmount') }}</th>
+                  <th class="px-4 py-3 font-semibold">{{ t('orderDetail.refundRecordReason') }}</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200 dark:divide-white/10">
+                <tr
+                  v-for="(record, idx) in refundRecords"
+                  :key="`refund-record-row-${idx}`"
+                >
+                  <td class="px-4 py-3 text-xs theme-text-muted whitespace-nowrap">{{ formatDate(record.created_at) }}</td>
+                  <td class="px-4 py-3 font-mono text-sm theme-text-primary whitespace-nowrap">{{ formatMoney(record.amount, record.currency || order.currency) }}</td>
+                  <td class="px-4 py-3 text-xs theme-text-muted whitespace-pre-wrap break-words">{{ refundReasonText(record.remark) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div v-else class="text-sm theme-text-muted">{{ t('orderDetail.refundRecordsEmpty') }}</div>
+        </div>
+
         <div v-if="showTimeCard" class="theme-panel rounded-2xl p-6">
           <h2 class="text-lg font-bold mb-4">{{ t('orderDetail.timeTitle') }}</h2>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
@@ -201,8 +227,8 @@
                     formatMoney(child.total_amount, child.currency || order.currency) }}</div>
                 </div>
                 <span class="theme-badge px-3 py-1 text-xs font-medium"
-                  :class="statusClass(child.status)">
-                  {{ statusLabel(child.status) }}
+                  :class="statusClass(resolvedChildStatus(child))">
+                  {{ statusLabel(resolvedChildStatus(child)) }}
                 </span>
               </div>
               <div class="mt-4">
@@ -442,6 +468,17 @@ const showTimeCard = computed(() => {
   return Boolean(order.value.paid_at || order.value.expires_at || order.value.canceled_at)
 })
 
+const showRefundRecordsCard = computed(() => {
+  const status = String(order.value?.status || '').trim()
+  return status === 'refunded' || status === 'partially_refunded'
+})
+
+const refundRecords = computed(() => {
+  const records = order.value?.refund_records
+  if (!Array.isArray(records)) return []
+  return records
+})
+
 const loadSavedAuth = () => {
   const saved = localStorage.getItem('guest_order_auth')
   const savedAuth = saved ? JSON.parse(saved) : {}
@@ -486,6 +523,22 @@ const fulfillmentStatusLabelText = (status: string) => fulfillmentStatusLabel(t,
 
 const statusClass = (status: string) => orderStatusClass(status)
 
+const resolvedChildStatus = (child: any) => {
+  const status = String(child?.status || '').trim()
+  const refundedCents = amountToCents(child?.refunded_amount)
+  if (refundedCents !== null && refundedCents > 0) {
+    const totalCents = amountToCents(child?.total_amount)
+    if (totalCents !== null && totalCents > 0 && refundedCents >= totalCents) {
+      return 'refunded'
+    }
+    return 'partially_refunded'
+  }
+  if (order.value?.status === 'refunded' && status !== 'refunded') {
+    return 'refunded'
+  }
+  return status
+}
+
 const formatDate = (raw?: string) => {
   if (!raw) return ''
   const date = new Date(raw)
@@ -497,6 +550,11 @@ const getLocalizedText = (jsonData: any) => {
   if (!jsonData) return ''
   const locale = appStore.locale
   return jsonData[locale] || jsonData['zh-CN'] || jsonData['en-US'] || ''
+}
+
+const refundReasonText = (remark?: string) => {
+  const value = String(remark || '').trim()
+  return value || t('orderDetail.refundRecordReasonEmpty')
 }
 
 const orderItemImage = (item: any) => {
