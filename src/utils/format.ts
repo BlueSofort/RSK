@@ -1,3 +1,5 @@
+import i18n from '@/i18n'
+
 export const toRFC3339 = (raw?: string) => {
   if (!raw) return undefined
   const date = new Date(raw)
@@ -24,8 +26,44 @@ export const hasPositiveAmount = (amount?: string | number) => {
   return !Number.isNaN(value) && value > 0
 }
 
+const resolveI18nLocale = () => {
+  const globalLocale = (i18n.global.locale as any)?.value || i18n.global.locale || ''
+  return String(globalLocale || '').trim()
+}
+
+const buildLocaleCandidates = () => {
+  const normalized = resolveI18nLocale().replace('_', '-')
+  const lower = normalized.toLowerCase()
+  if (!lower) return [] as string[]
+
+  const list = new Set<string>([normalized])
+  if (lower.startsWith('zh-cn') || lower === 'zh') {
+    list.add('zh-CN')
+    list.add('zh')
+  }
+  if (lower.startsWith('zh-tw') || lower.startsWith('zh-hk') || lower.startsWith('zh-mo')) {
+    list.add('zh-TW')
+  }
+  if (lower.startsWith('en')) {
+    list.add('en-US')
+    list.add('en')
+  }
+
+  return Array.from(list)
+}
+
 export const getLocalizedText = (jsonData: any) => {
   if (!jsonData) return ''
   if (typeof jsonData === 'string') return jsonData
-  return jsonData['zh-CN'] || jsonData['zh-TW'] || jsonData['en-US'] || Object.values(jsonData)[0] || ''
+
+  const source = jsonData as Record<string, unknown>
+  const localeCandidates = buildLocaleCandidates()
+  for (const key of localeCandidates) {
+    const val = source[key]
+    if (val !== undefined && val !== null && String(val).trim() !== '') {
+      return String(val)
+    }
+  }
+
+  return String(source['zh-CN'] || source['zh-TW'] || source['en-US'] || Object.values(source)[0] || '')
 }
