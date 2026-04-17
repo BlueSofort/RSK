@@ -466,14 +466,14 @@ html[data-telegram-mini-app="true"] body {
   }
 
   .theme-auth-card {
-    @apply rounded-3xl border p-7 backdrop-blur-sm sm:p-9;
+    @apply rounded-3xl border p-6 backdrop-blur-sm sm:p-8;
     background-color: var(--ui-bg-overlay-strong);
     border-color: var(--ui-border-strong);
     box-shadow: var(--ui-shadow-2);
   }
 
   .theme-auth-form {
-    @apply space-y-6;
+    @apply space-y-5;
   }
 
   .theme-personal-card {
