@@ -1,7 +1,7 @@
 <template>
   <footer
     class="relative theme-panel-strong theme-text-secondary border-t theme-border overflow-hidden">
-    <div class="container mx-auto px-4 py-16 relative">
+    <div class="container mx-auto px-4 pt-10 pb-7 relative">
       <div class="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 mb-16">
         <!-- Brand -->
         <div class="col-span-2 space-y-6">
@@ -13,7 +13,7 @@
             <h3 class="theme-text-primary text-xl font-bold tracking-tight">{{ brandSiteName }}</h3>
           </div>
           <p class="text-sm leading-relaxed max-w-sm theme-text-muted">
-            {{ brandDescription || t('footer.description') }}
+            {{ brandDescription || '专业的在线发卡工作室，为您提供优质的产品和服务。' }}
           </p>
           <div class="flex space-x-4">
             <!-- Social Icons (Placeholder) -->
@@ -71,24 +71,52 @@
 
       <!-- Copyright -->
       <div
-        class="border-t theme-border pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs theme-text-muted">
-        <div class="space-y-1 text-center md:text-left">
-          <p>&copy; {{ currentYear }} {{ brandSiteName }}. {{ t('footer.rights') }}</p>
-        </div>
-        <div class="flex flex-col items-center gap-2 md:items-end">
-          <div class="flex flex-wrap items-center gap-x-4 gap-y-1 justify-center md:justify-end">
-            <router-link to="/privacy" class="hover:text-gray-900 dark:hover:text-gray-400">{{ t('footer.privacy') || 'Privacy Policy' }}</router-link>
-            <router-link to="/terms" class="hover:text-gray-900 dark:hover:text-gray-400">{{ t('footer.terms') || 'Terms of Service' }}</router-link>
+        class="border-t theme-border pt-8 flex flex-col items-center gap-6 text-xs theme-text-muted">
+        <div class="flex flex-col items-center gap-4 w-full">
+          <div class="flex flex-col md:flex-row items-center justify-between w-full gap-4">
+            <div class="flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-1">
+              <p>&copy; {{ currentYear }} {{ brandSiteName }}. {{ t('footer.rights') }}</p>
+            </div>
+            
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-1 justify-center md:justify-end">
+              <router-link to="/privacy" class="hover:text-gray-900 dark:hover:text-gray-400">{{ t('footer.privacy') || 'Privacy Policy' }}</router-link>
+              <router-link to="/terms" class="hover:text-gray-900 dark:hover:text-gray-400">{{ t('footer.terms') || 'Terms of Service' }}</router-link>
+              <template v-if="footerLinks.length">
+                <a
+                  v-for="link in footerLinks"
+                  :key="link.name"
+                  :href="link.url || 'javascript:void(0)'"
+                  :target="link.url ? '_blank' : undefined"
+                  rel="noopener noreferrer"
+                  class="hover:text-gray-900 dark:hover:text-gray-400"
+                >{{ link.name }}</a>
+              </template>
+            </div>
           </div>
-          <div v-if="footerLinks.length" class="flex flex-wrap items-center gap-x-4 gap-y-1 justify-center md:justify-end">
-            <a
-              v-for="link in footerLinks"
-              :key="link.name"
-              :href="link.url || 'javascript:void(0)'"
-              :target="link.url ? '_blank' : undefined"
-              rel="noopener noreferrer"
-              class="hover:text-gray-900 dark:hover:text-gray-400"
-            >{{ link.name }}</a>
+
+          <!-- Status Badges (Theme-aware style) -->
+          <div class="flex items-center justify-center gap-1">
+            <!-- Left Badge: Brand -->
+            <div class="flex items-center bg-[#2d2d2d] dark:bg-[#f5f5f5] text-white dark:text-[#1a1a1a] rounded px-1.5 py-0.5 shadow-md border border-white/10 dark:border-black/5 transition-colors duration-300">
+              <span class="mr-1 flex items-center justify-center text-[10px]">
+                🍰
+              </span>
+              <span class="text-[10px] font-bold tracking-tight">RSK发卡小店</span>
+            </div>
+            
+            <!-- Right Badge: Status Bubble -->
+            <div class="relative flex items-center bg-[#2d2d2d] dark:bg-[#f5f5f5] text-white dark:text-[#1a1a1a] px-1.5 py-0.5 rounded shadow-md border border-white/10 dark:border-black/5 transition-colors duration-300">
+              <!-- Bubble Arrow pointing left -->
+              <div class="absolute -left-0.5 top-1/2 -translate-y-1/2 w-1 h-1 bg-[#2d2d2d] dark:bg-[#f5f5f5] rotate-45 border-l border-b border-white/10 dark:border-black/5"></div>
+              <span class="relative z-10 text-[10px] font-bold">营业中</span>
+            </div>
+          </div>
+
+          <!-- Transistor Uptime Clock (Digital style) -->
+          <div class="inline-flex items-center px-3 py-1 bg-black dark:bg-[#1a1a1a] rounded-sm border border-cyan-500/40 dark:border-cyan-400/60 shadow-[0_0_8px_rgba(6,182,212,0.3)] dark:shadow-[0_0_12px_rgba(6,182,212,0.5)] transition-colors duration-300">
+            <span class="font-digital text-[12px] font-bold tracking-[0.05em] text-[#00ffff] dark:text-[#00e5ff] drop-shadow-[0_0_4px_rgba(0,255,255,0.8)] dark:drop-shadow-[0_0_6px_rgba(0,229,255,0.9)] uppercase">
+              {{ uptimeDisplay }}
+            </span>
           </div>
         </div>
       </div>
@@ -97,7 +125,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '../stores/app'
 
@@ -105,6 +133,36 @@ const { t } = useI18n()
 const appStore = useAppStore()
 
 const config = computed(() => appStore.config)
+
+// Uptime Clock Logic
+const launchDate = new Date('2026-04-18T00:00:00') // 运行起始日期
+const uptimeDisplay = ref('')
+
+const updateUptime = () => {
+  const now = new Date()
+  const diff = now.getTime() - launchDate.getTime()
+
+  const years = Math.floor(diff / (1000 * 60 * 60 * 24 * 365))
+  const days = Math.floor((diff % (1000 * 60 * 60 * 24 * 365)) / (1000 * 60 * 60 * 24))
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+
+  const pad = (n: number) => n.toString().padStart(2, '0')
+
+  uptimeDisplay.value = `${years} YEAR ${days} DAYS ${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
+}
+
+let timer: number | undefined
+
+onMounted(() => {
+  updateUptime()
+  timer = window.setInterval(updateUptime, 1000)
+})
+
+onUnmounted(() => {
+  if (timer) clearInterval(timer)
+})
 
 const brandSiteName = computed(() => {
   const siteName = config.value?.brand?.site_name

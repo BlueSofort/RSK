@@ -1,9 +1,17 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+@font-face {
+  font-family: 'DS-Digital';
+  src: url('./assets/fonts/DS-DIGIT-4.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
+  --ui-font-digital: 'DS-Digital', monospace;
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
@@ -139,6 +147,10 @@ body {
 html[data-telegram-mini-app="true"],
 html[data-telegram-mini-app="true"] body {
   min-height: var(--tg-viewport-stable-height);
+}
+
+.font-digital {
+  font-family: var(--ui-font-digital);
 }
 
 @layer base {
