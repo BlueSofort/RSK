@@ -546,6 +546,8 @@ const messages = {
         undo: '撤销',
         redo: '重做',
         sourceMode: '代码模式',
+        defaultColor: '默认颜色',
+        clearFormatting: '清除格式',
       },
       nav: {
         dashboard: '仪表盘',

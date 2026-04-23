@@ -180,6 +180,19 @@ const setColor = (color: string) => {
   }
 }
 
+const unsetColor = () => {
+  if (editor.value) {
+    editor.value.chain().focus().unsetColor().run()
+    showColorPicker.value = false
+  }
+}
+
+const clearFormatting = () => {
+  if (editor.value) {
+    editor.value.chain().focus().unsetAllMarks().clearNodes().run()
+  }
+}
+
 const handleClickOutside = (event: MouseEvent) => {
   const target = event.target as HTMLElement
   if (!target.closest('.color-picker-container')) {
@@ -220,6 +233,12 @@ onBeforeUnmount(() => {
 
       <button type="button" class="toolbar-btn" :title="t('admin.richEditor.strikethrough')" :class="{ 'is-active': editor.isActive('strike') }" @click="editor.chain().focus().toggleStrike().run()">
         <span class="font-bold line-through">S</span>
+      </button>
+
+      <button type="button" class="toolbar-btn" :title="t('admin.richEditor.clearFormatting')" @click="clearFormatting">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 002.828 0L21 7" />
+        </svg>
       </button>
 
       <div class="toolbar-divider"></div>
@@ -279,13 +298,18 @@ onBeforeUnmount(() => {
           </svg>
         </button>
 
-        <div v-if="showColorPicker" class="absolute top-full mt-2 left-0 rounded-lg border border-border bg-background p-3 shadow-lg z-50">
+        <div v-if="showColorPicker" class="absolute top-full mt-2 left-0 rounded-lg border border-border bg-background p-3 shadow-lg z-50 min-w-[180px]">
           <div class="grid grid-cols-6 gap-2 mb-2">
             <button v-for="color in presetColors" :key="color" type="button" class="h-6 w-6 rounded border border-border hover:scale-110 transition-transform" :style="{ backgroundColor: color }" :title="color" @click="setColor(color)"></button>
           </div>
-          <div class="flex items-center space-x-2 pt-2 border-t border-border">
-            <input v-model="currentColor" type="color" class="w-8 h-8 rounded cursor-pointer" @input="setColor(currentColor)" />
-            <input v-model="currentColor" type="text" class="flex-1 rounded border border-border bg-background px-2 py-1 text-xs" @change="setColor(currentColor)" />
+          <div class="flex flex-col space-y-2 pt-2 border-t border-border">
+            <button type="button" class="w-full py-1.5 px-2 text-xs rounded border border-border hover:bg-muted transition-colors text-foreground" @click="unsetColor">
+              {{ t('admin.richEditor.defaultColor') }}
+            </button>
+            <div class="flex items-center space-x-2">
+              <input v-model="currentColor" type="color" class="w-8 h-8 rounded cursor-pointer" @input="setColor(currentColor)" />
+              <input v-model="currentColor" type="text" class="flex-1 rounded border border-border bg-background px-2 py-1 text-xs" @change="setColor(currentColor)" />
+            </div>
           </div>
         </div>
       </div>
@@ -424,6 +448,7 @@ onBeforeUnmount(() => {
 
 :deep(.ProseMirror) {
   outline: none;
+  @apply text-foreground;
 }
 
 :deep(.ProseMirror p.is-editor-empty:first-child::before) {
@@ -467,21 +492,11 @@ onBeforeUnmount(() => {
 }
 
 :deep(.ProseMirror code) {
-  background-color: rgba(0, 0, 0, 0.08);
-  padding: 0.125rem 0.375rem;
-  border-radius: 0.25rem;
-  font-size: 0.875rem;
-  font-family: monospace;
-  color: hsl(var(--primary));
+  @apply bg-muted/50 px-1.5 py-0.5 rounded text-sm font-mono text-primary;
 }
 
 :deep(.ProseMirror pre) {
-  background-color: rgba(0, 0, 0, 0.06);
-  padding: 1rem;
-  border-radius: 0.5rem;
-  margin-top: 1rem;
-  margin-bottom: 1rem;
-  overflow-x: auto;
+  @apply bg-muted/30 p-4 rounded-lg my-4 overflow-x-auto;
 }
 
 :deep(.ProseMirror pre code) {
