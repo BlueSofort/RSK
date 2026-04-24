@@ -1,12 +1,14 @@
 package service
 
 import (
+	"context"
 	"encoding/binary"
 	"fmt"
 	"image"
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,6 +20,10 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/google/uuid"
 )
 
@@ -33,12 +39,35 @@ var allowedUploadScenes = map[string]struct{}{
 
 // UploadService 文件上传服务
 type UploadService struct {
-	cfg *config.Config
+	cfg      *config.Config
+	s3Client *s3.Client
 }
 
 // NewUploadService 创建文件上传服务实例
 func NewUploadService(cfg *config.Config) *UploadService {
-	return &UploadService{cfg: cfg}
+	s := &UploadService{cfg: cfg}
+	if cfg.Upload.Driver == "s3" {
+		s.initS3Client()
+	}
+	return s
+}
+
+func (s *UploadService) initS3Client() {
+	c := s.cfg.Upload.S3
+
+	cfg, err := awsconfig.LoadDefaultConfig(context.TODO(),
+		awsconfig.WithRegion(c.Region),
+		awsconfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(c.AccessKey, c.SecretKey, "")),
+	)
+	if err != nil {
+		fmt.Printf("failed to load S3 config: %v\n", err)
+		return
+	}
+
+	s.s3Client = s3.NewFromConfig(cfg, func(o *s3.Options) {
+		o.BaseEndpoint = aws.String(c.Endpoint)
+		o.UsePathStyle = true // 强制使用路径模式，对 R2 更稳定
+	})
 }
 
 // UploadResult 上传结果（包含完整元数据）
@@ -156,33 +185,94 @@ func (s *UploadService) SaveFileWithMeta(file *multipart.FileHeader, scene strin
 	now := time.Now()
 	year := now.Format("2006")
 	month := now.Format("01")
-	savePath := filepath.Join("uploads", normalizedScene, year, month, filename)
+	key := fmt.Sprintf("%s/%s/%s/%s", normalizedScene, year, month, filename)
 
-	// 确保上传目录存在
-	if err := os.MkdirAll(filepath.Dir(savePath), 0755); err != nil {
-		return nil, err
-	}
-
-	// 保存文件
-	dst, err := os.Create(savePath)
-	if err != nil {
-		return nil, err
-	}
-	defer dst.Close()
-
-	_, err = io.Copy(dst, src)
-	if err != nil {
-		return nil, err
+	var finalURL string
+	if s.cfg.Upload.Driver == "s3" && s.s3Client != nil {
+		// 上传到 S3
+		_, err = s.s3Client.PutObject(context.TODO(), &s3.PutObjectInput{
+			Bucket:      aws.String(s.cfg.Upload.S3.Bucket),
+			Key:         aws.String(key),
+			Body:        src,
+			ContentType: aws.String(contentType),
+		})
+		if err != nil {
+				return nil, fmt.Errorf("上传到 S3 失败: %v", err)
+			}
+		finalURL = strings.TrimSuffix(s.cfg.Upload.S3.PublicURL, "/") + "/" + key
+	} else {
+		// 保存到本地
+		savePath := filepath.Join("uploads", key)
+		if err := os.MkdirAll(filepath.Dir(savePath), 0755); err != nil {
+			return nil, err
+		}
+		dst, err := os.Create(savePath)
+		if err != nil {
+			return nil, err
+		}
+		defer dst.Close()
+		if _, err = io.Copy(dst, src); err != nil {
+			return nil, err
+		}
+		finalURL = "/uploads/" + key
 	}
 
 	return &UploadResult{
-		URL:      fmt.Sprintf("/uploads/%s/%s/%s/%s", normalizedScene, year, month, filename),
+		URL:      finalURL,
 		Filename: file.Filename,
 		MimeType: contentType,
 		Size:     file.Size,
 		Width:    imgWidth,
 		Height:   imgHeight,
 	}, nil
+}
+
+// DeleteFile 删除文件
+func (s *UploadService) DeleteFile(fileURL string) error {
+	if fileURL == "" {
+		return nil
+	}
+
+	// 1. 判断是本地还是 S3
+	if s.cfg.Upload.Driver == "s3" {
+		return s.deleteFromS3(fileURL)
+	}
+	return s.deleteFromLocal(fileURL)
+}
+
+// deleteFromLocal 从本地删除
+func (s *UploadService) deleteFromLocal(fileURL string) error {
+	// 本地 URL 格式通常是 /uploads/...
+	relPath := strings.TrimPrefix(fileURL, "/uploads/")
+	filePath := filepath.Join("uploads", filepath.FromSlash(relPath))
+
+	if _, err := os.Stat(filePath); err == nil {
+		return os.Remove(filePath)
+	}
+	return nil
+}
+
+// deleteFromS3 从 S3/R2 删除
+func (s *UploadService) deleteFromS3(fileURL string) error {
+	if s.s3Client == nil {
+		s.initS3Client()
+	}
+	if s.s3Client == nil {
+		return fmt.Errorf("S3 client not initialized")
+	}
+
+	// 从 URL 中提取 Key
+	u, err := url.Parse(fileURL)
+	if err != nil {
+		return err
+	}
+	key := strings.TrimPrefix(u.Path, "/")
+
+	_, err = s.s3Client.DeleteObject(context.TODO(), &s3.DeleteObjectInput{
+		Bucket: aws.String(s.cfg.Upload.S3.Bucket),
+		Key:    aws.String(key),
+	})
+	return err
 }
 
 func normalizeUploadScene(raw string) string {

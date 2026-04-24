@@ -272,7 +272,7 @@ func newAutoStockProductService(t *testing.T) (*ProductService, *gorm.DB) {
 		t.Fatalf("auto migrate card secret failed: %v", err)
 	}
 	secretRepo := repository.NewCardSecretRepository(db)
-	return NewProductService(nil, nil, secretRepo, nil, nil, nil, nil, nil, nil), db
+	return NewProductService(nil, nil, secretRepo, nil, nil, nil, nil, nil, nil, nil), db
 }
 
 func insertCardSecrets(t *testing.T, db *gorm.DB, productID, skuID uint, status string, count int) {
@@ -713,6 +713,7 @@ func newProductServiceForTest(t *testing.T) (*ProductService, *gorm.DB) {
 		repository.NewCartRepository(db),
 		repository.NewProductMappingRepository(db),
 		repository.NewOrderRepository(db),
+		nil,
 	), db
 }
 
