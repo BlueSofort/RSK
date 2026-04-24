@@ -191,11 +191,23 @@ type CaptchaTurnstileConfig struct {
 
 // UploadConfig 文件上传配置
 type UploadConfig struct {
+	Driver            string   `mapstructure:"driver"` // local / s3
 	MaxSize           int64    `mapstructure:"max_size"`
 	AllowedTypes      []string `mapstructure:"allowed_types"`
 	AllowedExtensions []string `mapstructure:"allowed_extensions"`
 	MaxWidth          int      `mapstructure:"max_width"`
 	MaxHeight         int      `mapstructure:"max_height"`
+	S3                S3Config `mapstructure:"s3"`
+}
+
+// S3Config S3/R2 存储配置
+type S3Config struct {
+	Endpoint  string `mapstructure:"endpoint"`
+	Region    string `mapstructure:"region"`
+	AccessKey string `mapstructure:"access_key"`
+	SecretKey string `mapstructure:"secret_key"`
+	Bucket    string `mapstructure:"bucket"`
+	PublicURL string `mapstructure:"public_url"`
 }
 
 // CORSConfig 跨域配置

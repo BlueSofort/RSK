@@ -24,6 +24,7 @@ type ProductService struct {
 	cartRepo             repository.CartRepository
 	productMappingRepo   repository.ProductMappingRepository
 	orderRepo            repository.OrderRepository
+	uploadService        *UploadService
 }
 
 // NewProductService 创建商品服务
@@ -37,6 +38,7 @@ func NewProductService(
 	cartRepo repository.CartRepository,
 	productMappingRepo repository.ProductMappingRepository,
 	orderRepo repository.OrderRepository,
+	uploadService *UploadService,
 ) *ProductService {
 	return &ProductService{
 		repo:                 repo,
@@ -48,6 +50,7 @@ func NewProductService(
 		cartRepo:             cartRepo,
 		productMappingRepo:   productMappingRepo,
 		orderRepo:            orderRepo,
+		uploadService:        uploadService,
 	}
 }
 
@@ -366,6 +369,10 @@ func (s *ProductService) Update(id string, input CreateProductInput) (*models.Pr
 		product.ManualFormSchemaJSON = normalizedSchemaJSON
 	}
 
+	// 记录旧图片用于清理
+	oldImages := product.Images
+	newImages := models.StringArray(input.Images)
+
 	manualStockTotal := product.ManualStockTotal
 	if input.ManualStockTotal != nil {
 		manualStockTotal = *input.ManualStockTotal
@@ -420,6 +427,20 @@ func (s *ProductService) Update(id string, input CreateProductInput) (*models.Pr
 		if err := productRepo.Update(product); err != nil {
 			return err
 		}
+
+		// 异步清理不再使用的旧图片
+		if s.uploadService != nil {
+			// 找出在旧图片列表中但不在新图片列表中的图片
+			toDelete := findRemovedImages(oldImages, newImages)
+			if len(toDelete) > 0 {
+				go func(images []string) {
+					for _, img := range images {
+						_ = s.uploadService.DeleteFile(img)
+					}
+				}(toDelete)
+			}
+		}
+
 		if len(normalizedSKUs) > 0 {
 			return nil
 		}
@@ -428,6 +449,22 @@ func (s *ProductService) Update(id string, input CreateProductInput) (*models.Pr
 		return nil, err
 	}
 	return s.repo.GetByID(id)
+}
+
+// findRemovedImages 找出被移除的图片
+func findRemovedImages(oldImgs, newImgs []string) []string {
+	newMap := make(map[string]struct{}, len(newImgs))
+	for _, img := range newImgs {
+		newMap[img] = struct{}{}
+	}
+
+	var removed []string
+	for _, img := range oldImgs {
+		if _, exists := newMap[img]; !exists {
+			removed = append(removed, img)
+		}
+	}
+	return removed
 }
 
 func syncSingleProductSKU(skuRepo repository.ProductSKURepository, productID uint, priceAmount decimal.Decimal, costPriceAmount decimal.Decimal, manualStockTotal int, createWhenMissing bool) error {
@@ -937,6 +974,16 @@ func (s *ProductService) Delete(id string) error {
 		if err := s.productMappingRepo.WithTx(tx).DeleteByLocalProduct(product.ID); err != nil {
 			return err
 		}
+
+		// 异步清理图片
+		if s.uploadService != nil && len(product.Images) > 0 {
+			go func(images []string) {
+				for _, img := range images {
+					_ = s.uploadService.DeleteFile(img)
+				}
+			}(product.Images)
+		}
+
 		return s.repo.WithTx(tx).Delete(id)
 	})
 }
