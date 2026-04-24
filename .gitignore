@@ -10,5 +10,6 @@ uploads
 node_modules/
 **/node_modules/
 */dist/
+tmp/
 # Added by goreleaser init:
 dist/
