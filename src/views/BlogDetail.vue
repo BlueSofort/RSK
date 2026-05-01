@@ -43,7 +43,7 @@
                 {{ post.type === 'blog' ? t('nav.blog') : t('nav.notice') }}
               </span>
               <time class="text-sm theme-text-muted font-mono">
-                {{ formatDate(post.created_at) }}
+                {{ formatDate(post.published_at || post.created_at) }}
               </time>
             </div>
 
@@ -118,8 +118,19 @@ const getLocalizedText = (jsonData: any) => {
   return jsonData[locale] || jsonData['zh-CN'] || jsonData['en-US'] || ''
 }
 
-const formatDate = (dateString: string) => {
+const formatDate = (dateString: any) => {
+  if (!dateString) return '-'
   const date = new Date(dateString)
+  if (isNaN(date.getTime())) {
+    const s = String(dateString).replace(' ', 'T')
+    const dateT = new Date(s)
+    if (!isNaN(dateT.getTime())) return dateT.toLocaleDateString(appStore.locale, {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })
+    return String(dateString)
+  }
   return date.toLocaleDateString(appStore.locale, {
     year: 'numeric',
     month: 'long',
