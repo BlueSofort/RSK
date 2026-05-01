@@ -28,4 +28,4 @@ User-agent: meta-externalagent
 Disallow: /
 
 # 如果有 Sitemap，请在这里加上（有助于加快索引）
-# Sitemap: https://yourdomain.com/sitemap.xml
+Sitemap: https://www.rsk.cc.cd/sitemap.xml

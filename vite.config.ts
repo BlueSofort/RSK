@@ -19,6 +19,8 @@ export default defineConfig(({ mode }) => ({
     Sitemap({ 
       hostname: 'https://www.rsk.cc.cd', // 替换成你真实的域名
       // 根据项目路由补全公开页面
+      generateRobotsTxt: false, 
+      // 明确指定你要索引的路径
       dynamicRoutes: [
         '/',
         '/products',
