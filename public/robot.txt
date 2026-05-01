@@ -1,0 +1,31 @@
+# 允许所有主流搜索引擎抓取
+User-agent: *
+Allow: /
+
+# 限制特定的 AI 和采集爬虫（根据你原有的意图）
+User-agent: Amazonbot
+Disallow: /
+
+User-agent: Applebot-Extended
+Disallow: /
+
+User-agent: Bytespider
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
+
+User-agent: GPTBot
+Disallow: /
+
+User-agent: meta-externalagent
+Disallow: /
+
+# 如果有 Sitemap，请在这里加上（有助于加快索引）
+# Sitemap: https://yourdomain.com/sitemap.xml

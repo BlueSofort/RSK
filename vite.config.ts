@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import Sitemap from 'vite-plugin-sitemap' // 1. 引入插件
 
 const cfAsyncModuleScriptPlugin = () => ({
   name: 'cfasync-module-script',
@@ -13,7 +14,31 @@ const cfAsyncModuleScriptPlugin = () => ({
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => ({
-  plugins: [vue(), cfAsyncModuleScriptPlugin()],
+  plugins: [
+    vue(), cfAsyncModuleScriptPlugin(),
+    Sitemap({ 
+      hostname: 'https://www.rsk.cc.cd', // 替换成你真实的域名
+      // 根据项目路由补全公开页面
+      dynamicRoutes: [
+        '/',
+        '/products',
+        '/cart',
+        '/checkout',
+        '/pay',
+        '/guest/orders',
+        '/blog',
+        '/notice',
+        '/about',
+        '/terms',
+        '/privacy',
+        '/auth/login',
+        '/auth/register',
+        '/auth/forgot'
+      ],
+      changefreq: 'weekly', // 更新频率
+      priority: 1.0,        // 权重
+    }),
+  ],
   esbuild: mode === 'production' ? { drop: ['console', 'debugger'] } : {},
   build: {
     rollupOptions: {
