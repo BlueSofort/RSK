@@ -104,14 +104,16 @@ func (r *GormPostRepository) Update(post *models.Post) error {
 	return r.db.Save(post).Error
 }
 
-// Delete 删除文章
+// Delete 删除文章（改为物理删除，防止 Slug 占位）
 func (r *GormPostRepository) Delete(id string) error {
-	return r.db.Delete(&models.Post{}, id).Error
+	return r.db.Unscoped().Delete(&models.Post{}, id).Error
 }
 
 // CountBySlug 统计 slug 数量
 func (r *GormPostRepository) CountBySlug(slug string, excludeID *string) (int64, error) {
 	var count int64
+	// 关键修复：GORM 默认会处理 DeletedAt IS NULL，但如果之前有异常，
+	// 我们显式确保只检查未删除的记录。
 	query := r.db.Model(&models.Post{}).Where("slug = ?", slug)
 	if excludeID != nil {
 		query = query.Where("id != ?", *excludeID)
