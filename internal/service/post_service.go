@@ -43,7 +43,17 @@ func (s *PostService) ListPublic(postType string, page, pageSize int) ([]models.
 		OnlyPublished: true,
 		OrderBy:       "published_at DESC, created_at DESC",
 	}
-	return s.repo.List(filter)
+	posts, total, err := s.repo.List(filter)
+	if err != nil {
+		return nil, 0, err
+	}
+	// 兜底：如果 published_at 为空，使用 created_at
+	for i := range posts {
+		if posts[i].PublishedAt == nil {
+			posts[i].PublishedAt = &posts[i].CreatedAt
+		}
+	}
+	return posts, total, nil
 }
 
 // GetPublicBySlug 获取公开文章详情
@@ -54,6 +64,10 @@ func (s *PostService) GetPublicBySlug(slug string) (*models.Post, error) {
 	}
 	if post == nil {
 		return nil, ErrNotFound
+	}
+	// 兜底：如果 published_at 为空，使用 created_at
+	if post.PublishedAt == nil {
+		post.PublishedAt = &post.CreatedAt
 	}
 	return post, nil
 }
