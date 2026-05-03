@@ -23,14 +23,14 @@
     "@tailwindcss/typography": "^0.5.19",
     "@types/node": "^24.10.1",
     "@types/qrcode": "^1.5.6",
-    "@vitejs/plugin-vue": "^6.0.1",
+    "@vitejs/plugin-vue": "^5.2.4",
     "@vue/tsconfig": "^0.8.1",
     "autoprefixer": "^10.4.23",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.18",
     "typescript": "~5.9.3",
-    "vite": "^7.2.4",
+    "vite": "^5.4.21",
     "vite-plugin-sitemap": "^0.8.2",
-    "vue-tsc": "^3.1.4"
+    "vue-tsc": "^2.2.12"
   }
 }
