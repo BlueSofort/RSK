@@ -136,22 +136,8 @@ const getLocalizedText = (jsonData: any) => {
 
 const formatDate = (dateString: any) => {
   if (!dateString) return '-'
-  const date = new Date(dateString)
-  if (isNaN(date.getTime())) {
-    const s = String(dateString).replace(' ', 'T')
-    const dateT = new Date(s)
-    if (!isNaN(dateT.getTime())) return dateT.toLocaleDateString(appStore.locale, {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    })
-    return String(dateString)
-  }
-  return date.toLocaleDateString(appStore.locale, {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
+  const s = String(dateString)
+  return s.length >= 10 ? s.substring(0, 10) : s
 }
 
 const loadNotices = async () => {
