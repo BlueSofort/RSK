@@ -358,11 +358,7 @@ func (s *ChannelClientService) VerifyChannelSignature(key, signature string, tim
 	// 解密 secret
 	plainSecret, err := crypto.Decrypt(s.encKey, client.ChannelSecret)
 	if err != nil {
-		// 如果解密失败，尝试直接使用数据库中的原始字符串进行签名验证（支持明文）
-		if !upstream.Verify(client.ChannelSecret, method, path, signature, timestamp, body) {
-			return nil, ErrChannelSignatureInvalid
-		}
-		return client, nil
+		return nil, fmt.Errorf("decrypt channel secret: %w", err)
 	}
 
 	// 验证签名（复用 upstream.Verify）
