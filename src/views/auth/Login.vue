@@ -246,7 +246,7 @@ const emailVerificationEnabled = computed(() => appStore.config?.email_verificat
 const isTelegramMiniApp = computed(() => telegramMiniAppStore.isMiniApp && telegramMiniAppStore.isReady)
 const miniAppInitData = computed(() => String(telegramMiniAppStore.initData || '').trim())
 const showTelegramWidget = computed(() => telegramEnabled.value && !isTelegramMiniApp.value)
-const showMiniAppLoginHint = computed(() => isTelegramMiniApp.value)
+const showMiniAppLoginHint = computed(() => telegramEnabled.value && isTelegramMiniApp.value)
 const telegramMiniAppEntryLink = computed(() => buildTelegramMiniAppEntryLink(telegramBotUsername.value, telegramMiniAppURL.value))
 const isTelegramUrlEnv = isTelegramUrlEnvironment()
 const showTelegramMiniAppEntry = computed(() => !isTelegramMiniApp.value && isTelegramUrlEnv && telegramMiniAppEntryLink.value !== '')
@@ -360,7 +360,7 @@ const handleTelegramAuth = async (raw: any) => {
 }
 
 const tryTelegramMiniAppLogin = async () => {
-  if (!isTelegramMiniApp.value || miniAppInitData.value === '' || miniAppLoginAttempted.value || attemptingMiniAppLogin.value) {
+  if (!telegramEnabled.value || !isTelegramMiniApp.value || miniAppInitData.value === '' || miniAppLoginAttempted.value || attemptingMiniAppLogin.value) {
     return
   }
 
