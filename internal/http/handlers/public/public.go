@@ -645,8 +645,9 @@ func (h *Handler) GetPosts(c *gin.Context) {
 
 	// 获取类型参数
 	postType := c.Query("type") // blog 或 notice
+	categoryID, _ := strconv.Atoi(c.DefaultQuery("category_id", "0"))
 
-	posts, total, err := h.PostService.ListPublic(postType, page, pageSize)
+	posts, total, err := h.PostService.ListPublic(postType, uint(categoryID), page, pageSize)
 	if err != nil {
 		shared.RespondError(c, response.CodeInternal, "error.post_fetch_failed", err)
 		return
@@ -676,7 +677,14 @@ func (h *Handler) GetPostBySlug(c *gin.Context) {
 
 // GetCategories 获取分类列表
 func (h *Handler) GetCategories(c *gin.Context) {
-	categories, err := h.CategoryService.List()
+	categoryType := c.Query("type")
+	var categories []models.Category
+	var err error
+	if categoryType != "" {
+		categories, err = h.CategoryService.ListByType(categoryType)
+	} else {
+		categories, err = h.CategoryService.List()
+	}
 	if err != nil {
 		shared.RespondError(c, response.CodeInternal, "error.category_fetch_failed", err)
 		return

@@ -116,6 +116,14 @@ security:
     require_lower: true
     require_number: true
     require_special: false
+  # 评论频率限制
+  comment_rate_limit:
+    window_seconds: 60  # 时间窗口（秒）
+    max_requests: 5     # 窗口内最大评论次数
+  # 敏感词过滤
+  sensitive_words:
+    enabled: true       # 是否启用敏感词过滤
+    dict: ./data/sensitive_words.txt  # 敏感词库文件路径（每行一个词）
 
 email:
   enabled: true

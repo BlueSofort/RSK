@@ -20,6 +20,7 @@ func NewCategoryService(repo repository.CategoryRepository) *CategoryService {
 // CreateCategoryInput 创建/更新分类输入
 type CreateCategoryInput struct {
 	ParentID  uint
+	Type      string
 	Slug      string
 	NameJSON  map[string]interface{}
 	Icon      string
@@ -29,6 +30,11 @@ type CreateCategoryInput struct {
 // List 获取分类列表
 func (s *CategoryService) List() ([]models.Category, error) {
 	return s.repo.List()
+}
+
+// ListByType 按类型获取分类列表
+func (s *CategoryService) ListByType(categoryType string) ([]models.Category, error) {
+	return s.repo.ListByType(categoryType)
 }
 
 // Create 创建分类
@@ -47,10 +53,14 @@ func (s *CategoryService) Create(input CreateCategoryInput) (*models.Category, e
 
 	category := models.Category{
 		ParentID:  input.ParentID,
+		Type:      input.Type,
 		Slug:      input.Slug,
 		NameJSON:  models.JSON(input.NameJSON),
 		Icon:      input.Icon,
 		SortOrder: input.SortOrder,
+	}
+	if category.Type == "" {
+		category.Type = "product"
 	}
 	if err := s.repo.Create(&category); err != nil {
 		return nil, err
@@ -80,6 +90,9 @@ func (s *CategoryService) Update(id string, input CreateCategoryInput) (*models.
 	}
 
 	category.ParentID = input.ParentID
+	if input.Type != "" {
+		category.Type = input.Type
+	}
 	category.Slug = input.Slug
 	category.NameJSON = models.JSON(input.NameJSON)
 	category.Icon = input.Icon

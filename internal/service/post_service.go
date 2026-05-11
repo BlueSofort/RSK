@@ -22,6 +22,7 @@ func NewPostService(repo repository.PostRepository) *PostService {
 type CreatePostInput struct {
 	Slug        string
 	Type        string
+	CategoryID  uint
 	TitleJSON   map[string]interface{}
 	SummaryJSON map[string]interface{}
 	ContentJSON map[string]interface{}
@@ -35,11 +36,12 @@ var allowedPostTypes = map[string]struct{}{
 }
 
 // ListPublic 获取公开文章列表
-func (s *PostService) ListPublic(postType string, page, pageSize int) ([]models.Post, int64, error) {
+func (s *PostService) ListPublic(postType string, categoryID uint, page, pageSize int) ([]models.Post, int64, error) {
 	filter := repository.PostListFilter{
 		Page:          page,
 		PageSize:      pageSize,
 		Type:          postType,
+		CategoryID:    categoryID,
 		OnlyPublished: true,
 		OrderBy:       "published_at DESC, created_at DESC",
 	}
@@ -106,6 +108,7 @@ func (s *PostService) Create(input CreatePostInput) (*models.Post, error) {
 	post := models.Post{
 		Slug:        input.Slug,
 		Type:        input.Type,
+		CategoryID:  input.CategoryID,
 		TitleJSON:   models.JSON(input.TitleJSON),
 		SummaryJSON: models.JSON(input.SummaryJSON),
 		ContentJSON: models.JSON(input.ContentJSON),
@@ -148,6 +151,7 @@ func (s *PostService) Update(id string, input CreatePostInput) (*models.Post, er
 
 	post.Slug = input.Slug
 	post.Type = input.Type
+	post.CategoryID = input.CategoryID
 	post.TitleJSON = models.JSON(input.TitleJSON)
 	post.SummaryJSON = models.JSON(input.SummaryJSON)
 	post.ContentJSON = models.JSON(input.ContentJSON)

@@ -678,7 +678,7 @@ func (h *Handler) UpdateUserProfile(c *gin.Context) {
 		return
 	}
 
-	user, err := h.UserAuthService.UpdateProfile(id, req.Nickname, req.Locale)
+	user, err := h.UserAuthService.UpdateProfile(id, req.Nickname, req.Locale, nil)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrProfileEmpty):

@@ -35,6 +35,7 @@ var allowedUploadScenes = map[string]struct{}{
 	"common":   {},
 	"category": {},
 	"telegram": {},
+	"avatar":   {},
 }
 
 // UploadService 文件上传服务

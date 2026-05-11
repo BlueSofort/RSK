@@ -11,6 +11,7 @@ import (
 // CategoryRepository 分类数据访问接口
 type CategoryRepository interface {
 	List() ([]models.Category, error)
+	ListByType(categoryType string) ([]models.Category, error)
 	GetByID(id string) (*models.Category, error)
 	Create(category *models.Category) error
 	Update(category *models.Category) error
@@ -41,6 +42,19 @@ func (r *GormCategoryRepository) List() ([]models.Category, error) {
 	return categories, nil
 }
 
+// ListByType 按类型获取分类列表
+func (r *GormCategoryRepository) ListByType(categoryType string) ([]models.Category, error) {
+	var categories []models.Category
+	query := r.db.Order("sort_order DESC, id ASC")
+	if categoryType != "" {
+		query = query.Where("type = ?", categoryType)
+	}
+	if err := query.Find(&categories).Error; err != nil {
+		return nil, err
+	}
+	return categories, nil
+}
+
 // GetByID 根据 ID 获取分类
 func (r *GormCategoryRepository) GetByID(id string) (*models.Category, error) {
 	var category models.Category
@@ -63,9 +77,9 @@ func (r *GormCategoryRepository) Update(category *models.Category) error {
 	return r.db.Save(category).Error
 }
 
-// Delete 删除分类
+// Delete 删除分类（物理删除）
 func (r *GormCategoryRepository) Delete(id string) error {
-	return r.db.Delete(&models.Category{}, id).Error
+	return r.db.Unscoped().Delete(&models.Category{}, id).Error
 }
 
 // CountBySlug 统计 slug 数量

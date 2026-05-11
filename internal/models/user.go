@@ -13,6 +13,7 @@ type User struct {
 	PasswordHash          string         `gorm:"not null" json:"-"`                                            // 密码哈希（不返回给前端）
 	PasswordSetupRequired bool           `gorm:"not null;default:false" json:"-"`                              // 是否需要首次设置密码（Telegram 自动建号场景）
 	DisplayName           string         `gorm:"default:''" json:"display_name"`                               // 昵称
+	Avatar                string         `gorm:"type:varchar(500);default:''" json:"avatar"`                   // 头像路径
 	Locale                string         `gorm:"default:'zh-CN'" json:"locale"`                                // 语言偏好
 	Status                string         `gorm:"default:'active'" json:"status"`                               // 账号状态
 	MemberLevelID         uint           `gorm:"not null;default:0" json:"member_level_id"`                    // 当前会员等级ID

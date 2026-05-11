@@ -97,7 +97,7 @@ func (s *UserAuthService) ChangePassword(userID uint, oldPassword, newPassword s
 }
 
 // UpdateProfile 更新用户资料
-func (s *UserAuthService) UpdateProfile(userID uint, nickname, locale *string) (*models.User, error) {
+func (s *UserAuthService) UpdateProfile(userID uint, nickname, locale, avatar *string) (*models.User, error) {
 	if userID == 0 {
 		return nil, ErrNotFound
 	}
@@ -125,6 +125,11 @@ func (s *UserAuthService) UpdateProfile(userID uint, nickname, locale *string) (
 			user.Locale = trimmed
 			updated = true
 		}
+	}
+
+	if avatar != nil {
+		user.Avatar = strings.TrimSpace(*avatar)
+		updated = true
 	}
 
 	if !updated {

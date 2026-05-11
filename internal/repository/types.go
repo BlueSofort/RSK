@@ -32,6 +32,7 @@ type PostListFilter struct {
 	Page          int
 	PageSize      int
 	Type          string
+	CategoryID    uint
 	Search        string
 	OnlyPublished bool
 	OrderBy       string
@@ -237,6 +238,15 @@ type MediaListFilter struct {
 	PageSize int
 	Scene    string
 	Search   string // 按素材名称/原始文件名模糊搜索
+}
+
+// CommentListFilter 查询评论列表的过滤条件
+type CommentListFilter struct {
+	Page     int
+	PageSize int
+	PostID   uint
+	ParentID *uint // nil=所有评论，0=仅顶层，>0=指定父评论的子回复
+	Status   string
 }
 
 // AffiliateProfileStatsAggregate 推广用户统计聚合结果

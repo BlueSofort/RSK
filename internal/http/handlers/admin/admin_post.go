@@ -35,6 +35,7 @@ func (h *Handler) GetAdminPosts(c *gin.Context) {
 type CreatePostRequest struct {
 	Slug        string                 `json:"slug" binding:"required"`
 	Type        string                 `json:"type" binding:"required"` // blog 或 notice
+	CategoryID  uint                   `json:"category_id"`
 	TitleJSON   map[string]interface{} `json:"title" binding:"required"`
 	SummaryJSON map[string]interface{} `json:"summary"`
 	ContentJSON map[string]interface{} `json:"content"`
@@ -53,6 +54,7 @@ func (h *Handler) CreatePost(c *gin.Context) {
 	post, err := h.PostService.Create(service.CreatePostInput{
 		Slug:        req.Slug,
 		Type:        req.Type,
+		CategoryID:  req.CategoryID,
 		TitleJSON:   req.TitleJSON,
 		SummaryJSON: req.SummaryJSON,
 		ContentJSON: req.ContentJSON,
@@ -88,6 +90,7 @@ func (h *Handler) UpdatePost(c *gin.Context) {
 	post, err := h.PostService.Update(id, service.CreatePostInput{
 		Slug:        req.Slug,
 		Type:        req.Type,
+		CategoryID:  req.CategoryID,
 		TitleJSON:   req.TitleJSON,
 		SummaryJSON: req.SummaryJSON,
 		ContentJSON: req.ContentJSON,

@@ -250,8 +250,22 @@ func DefaultCORSAllowedHeaders() []string {
 
 // SecurityConfig 安全配置
 type SecurityConfig struct {
-	LoginRateLimit LoginRateLimitConfig `mapstructure:"login_rate_limit"`
-	PasswordPolicy PasswordPolicyConfig `mapstructure:"password_policy"`
+	LoginRateLimit    LoginRateLimitConfig    `mapstructure:"login_rate_limit"`
+	PasswordPolicy    PasswordPolicyConfig    `mapstructure:"password_policy"`
+	CommentRateLimit  CommentRateLimitConfig  `mapstructure:"comment_rate_limit"`
+	SensitiveWords    SensitiveWordsConfig    `mapstructure:"sensitive_words"`
+}
+
+// CommentRateLimitConfig 评论频率限制配置
+type CommentRateLimitConfig struct {
+	WindowSeconds int `mapstructure:"window_seconds"` // 窗口秒数，默认 60
+	MaxRequests   int `mapstructure:"max_requests"`   // 窗口内最大次数，默认 5
+}
+
+// SensitiveWordsConfig 敏感词过滤配置
+type SensitiveWordsConfig struct {
+	Enabled bool   `mapstructure:"enabled"` // 是否启用，默认 true
+	Dict    string `mapstructure:"dict"`    // 词库文件路径，默认 ./data/sensitive_words.txt
 }
 
 // LoginRateLimitConfig 登录限流配置
@@ -353,6 +367,10 @@ func Load() *Config {
 	viper.SetDefault("security.password_policy.require_lower", true)
 	viper.SetDefault("security.password_policy.require_number", true)
 	viper.SetDefault("security.password_policy.require_special", false)
+	viper.SetDefault("security.comment_rate_limit.window_seconds", 60)
+	viper.SetDefault("security.comment_rate_limit.max_requests", 5)
+	viper.SetDefault("security.sensitive_words.enabled", true)
+	viper.SetDefault("security.sensitive_words.dict", "./data/sensitive_words.txt")
 	viper.SetDefault("email.enabled", false)
 	viper.SetDefault("email.host", "")
 	viper.SetDefault("email.port", 587)

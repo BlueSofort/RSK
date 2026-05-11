@@ -84,6 +84,7 @@ func (u *UintArray) Scan(value interface{}) error {
 type Category struct {
 	ID        uint           `gorm:"primarykey" json:"id"`                      // 主键
 	ParentID  uint           `gorm:"not null;default:0;index" json:"parent_id"` // 父分类ID，0 表示一级分类
+	Type      string         `gorm:"type:varchar(20);not null;default:'product';index" json:"type"` // product / post
 	Slug      string         `gorm:"uniqueIndex;not null" json:"slug"`          // 唯一标识
 	NameJSON  JSON           `gorm:"type:json;not null" json:"name"`            // 多语言名称
 	Icon      string         `gorm:"type:varchar(500)" json:"icon"`             // 分类图标（图片路径）

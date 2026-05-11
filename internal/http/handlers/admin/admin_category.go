@@ -5,6 +5,7 @@ import (
 
 	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/http/response"
+	"github.com/dujiao-next/internal/models"
 	"github.com/dujiao-next/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -12,7 +13,14 @@ import (
 
 // GetAdminCategories 获取分类列表 (Admin)
 func (h *Handler) GetAdminCategories(c *gin.Context) {
-	categories, err := h.CategoryService.List()
+	categoryType := c.Query("type")
+	var categories []models.Category
+	var err error
+	if categoryType != "" {
+		categories, err = h.CategoryService.ListByType(categoryType)
+	} else {
+		categories, err = h.CategoryService.List()
+	}
 	if err != nil {
 		shared.RespondError(c, response.CodeInternal, "error.category_fetch_failed", err)
 		return
@@ -26,6 +34,7 @@ func (h *Handler) GetAdminCategories(c *gin.Context) {
 // CreateCategoryRequest 创建分类请求
 type CreateCategoryRequest struct {
 	ParentID  uint                   `json:"parent_id"`
+	Type      string                 `json:"type"`
 	Slug      string                 `json:"slug" binding:"required"`
 	NameJSON  map[string]interface{} `json:"name" binding:"required"`
 	Icon      string                 `json:"icon"`
@@ -42,6 +51,7 @@ func (h *Handler) CreateCategory(c *gin.Context) {
 
 	category, err := h.CategoryService.Create(service.CreateCategoryInput{
 		ParentID:  req.ParentID,
+		Type:      req.Type,
 		Slug:      req.Slug,
 		NameJSON:  req.NameJSON,
 		Icon:      req.Icon,
@@ -75,6 +85,7 @@ func (h *Handler) UpdateCategory(c *gin.Context) {
 
 	category, err := h.CategoryService.Update(id, service.CreateCategoryInput{
 		ParentID:  req.ParentID,
+		Type:      req.Type,
 		Slug:      req.Slug,
 		NameJSON:  req.NameJSON,
 		Icon:      req.Icon,

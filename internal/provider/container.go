@@ -58,6 +58,7 @@ type Container struct {
 	MemberLevelRepo        repository.MemberLevelRepository
 	MemberLevelPriceRepo   repository.MemberLevelPriceRepository
 	MediaRepo              repository.MediaRepository
+	CommentRepo            repository.CommentRepository
 
 	// Services
 	AuthzService              *authz.Service
@@ -99,6 +100,7 @@ type Container struct {
 	MemberLevelService        *service.MemberLevelService
 	AdProxyService            *service.AdProxyService
 	MediaService              *service.MediaService
+	CommentService            *service.CommentService
 	OrderRiskControlService   *service.OrderRiskControlService
 }
 
@@ -177,6 +179,7 @@ func (c *Container) initRepositories() {
 	c.MemberLevelRepo = repository.NewMemberLevelRepository(db)
 	c.MemberLevelPriceRepo = repository.NewMemberLevelPriceRepository(db)
 	c.MediaRepo = repository.NewMediaRepository(db)
+	c.CommentRepo = repository.NewCommentRepository(db)
 }
 
 func (c *Container) initServices() {
@@ -309,6 +312,7 @@ func (c *Container) initServices() {
 	c.ProcurementOrderService.SetDownstreamCallbackService(c.DownstreamCallbackService)
 	c.ProcurementOrderService.SetNotificationService(c.NotificationService)
 	c.MediaService = service.NewMediaService(c.MediaRepo)
+	c.CommentService = service.NewCommentService(c.CommentRepo, c.PostRepo, c.Config)
 	c.ProductMappingService.SetMediaService(c.MediaService)
 	c.AdProxyService = service.NewAdProxyService()
 }

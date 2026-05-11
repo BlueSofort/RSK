@@ -12,6 +12,7 @@ type Post struct {
 	ID          uint           `gorm:"primarykey" json:"id"`                               // 主键
 	Slug        string         `gorm:"uniqueIndex:idx_post_slug_deleted;not null" json:"slug"` // 唯一标识（复合索引）
 	Type        string         `gorm:"not null;index" json:"type"`                         // 类型（blog/notice）
+	CategoryID  uint           `gorm:"not null;default:0;index" json:"category_id"`         // 分类ID
 	TitleJSON   JSON           `gorm:"type:json;not null" json:"title"`                    // 多语言标题
 	SummaryJSON JSON           `gorm:"type:json" json:"summary"`                           // 多语言摘要
 	ContentJSON JSON           `gorm:"type:json" json:"content"`                           // 多语言内容

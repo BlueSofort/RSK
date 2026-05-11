@@ -53,7 +53,14 @@ func SetupRouter(cfg *config.Config, c *provider.Container) *gin.Engine {
 		BlockSeconds:  cfg.Security.LoginRateLimit.BlockSeconds,
 		MessageKey:    "error.login_too_many",
 	}
-	upstreamAPIRule := RateLimitRule{
+		commentRateRule := RateLimitRule{
+			Prefix:        fmt.Sprintf("%s:rate:comment", redisPrefix),
+			WindowSeconds: cfg.Security.CommentRateLimit.WindowSeconds,
+			MaxRequests:   cfg.Security.CommentRateLimit.MaxRequests,
+			BlockSeconds:  0,
+			MessageKey:    "error.comment_rate_limited",
+		}
+		upstreamAPIRule := RateLimitRule{
 		Prefix:        fmt.Sprintf("%s:rate:upstream_api", redisPrefix),
 		WindowSeconds: 60,
 		MaxRequests:   60,
@@ -82,6 +89,7 @@ func SetupRouter(cfg *config.Config, c *provider.Container) *gin.Engine {
 			public.GET("/products/:slug", publicHandler.GetProductBySlug)
 			public.GET("/posts", publicHandler.GetPosts)
 			public.GET("/posts/:slug", publicHandler.GetPostBySlug)
+			public.GET("/comments", publicHandler.GetComments)
 			public.GET("/banners", publicHandler.GetPublicBanners)
 			public.GET("/categories", publicHandler.GetCategories)
 			public.GET("/captcha/image", publicHandler.GetImageCaptcha)
@@ -121,6 +129,9 @@ func SetupRouter(cfg *config.Config, c *provider.Container) *gin.Engine {
 			user.GET("/me", publicHandler.GetCurrentUser)
 			user.GET("/me/login-logs", publicHandler.GetMyLoginLogs)
 			user.PUT("/me/profile", publicHandler.UpdateUserProfile)
+			user.POST("/me/avatar", RateLimitMiddleware(redisClient, commentRateRule, KeyByUserID), publicHandler.UploadAvatar)
+			user.POST("/comments", RateLimitMiddleware(redisClient, commentRateRule, KeyByUserID), publicHandler.CreateComment)
+			user.DELETE("/comments/:id", publicHandler.DeleteMyComment)
 			user.PUT("/me/password", publicHandler.ChangeUserPassword)
 			user.GET("/me/telegram", publicHandler.GetMyTelegramBinding)
 			user.POST("/me/telegram/bind", publicHandler.BindMyTelegram)
@@ -263,6 +274,10 @@ func SetupRouter(cfg *config.Config, c *provider.Container) *gin.Engine {
 				authorized.POST("/posts", adminHandler.CreatePost)
 				authorized.PUT("/posts/:id", adminHandler.UpdatePost)
 				authorized.DELETE("/posts/:id", adminHandler.DeletePost)
+
+				// 评论管理
+				authorized.GET("/comments", adminHandler.GetAdminComments)
+				authorized.DELETE("/comments/:id", adminHandler.DeleteAdminComment)
 
 				// Banner 管理
 				authorized.GET("/banners", adminHandler.GetAdminBanners)
