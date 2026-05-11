@@ -28,6 +28,7 @@ const currentTab = ref('blog')
 const currentLang = ref('zh-CN')
 const submitting = ref(false)
 const route = useRoute()
+const categories = ref<import('@/api/types').AdminCategory[]>([])
 
 const languages = computed(() => [
   { code: 'zh-CN', name: t('admin.common.lang.zhCN') },
@@ -51,6 +52,7 @@ const form = reactive({
   summary: { 'zh-CN': '', 'zh-TW': '', 'en-US': '' } as Record<string, string>,
   content: { 'zh-CN': '', 'zh-TW': '', 'en-US': '' } as Record<string, string>,
   type: 'blog',
+  category_id: 0,
   thumbnail: '',
   is_published: true,
 })
@@ -109,6 +111,7 @@ const openCreateModal = () => {
     summary: { 'zh-CN': '', 'zh-TW': '', 'en-US': '' },
     content: { 'zh-CN': '', 'zh-TW': '', 'en-US': '' },
     type: currentTab.value,
+    category_id: 0,
     thumbnail: '',
     is_published: true,
   })
@@ -125,6 +128,7 @@ const openEditModal = (post: AdminPost) => {
     summary: post.summary || { 'zh-CN': '', 'zh-TW': '', 'en-US': '' },
     content: post.content || { 'zh-CN': '', 'zh-TW': '', 'en-US': '' },
     type: post.type,
+    category_id: post.category_id || 0,
     thumbnail: post.thumbnail,
     is_published: post.is_published,
   })
@@ -140,7 +144,7 @@ const handleSubmit = async () => {
   if (!validate({ slug: form.slug, type: form.type, title: form.title['zh-CN'] } as Record<string, unknown>)) return
   submitting.value = true
   try {
-    const payload = { ...form }
+    const payload = { ...form, category_id: Number(form.category_id) || 0 }
     if (isEditing.value) {
       await adminAPI.updatePost(form.id, payload)
     } else {
@@ -177,8 +181,18 @@ const openEditById = async (rawId: unknown) => {
   }
 }
 
+const fetchCategories = async () => {
+  try {
+    const res = await adminAPI.getCategories({ page: 1, page_size: 100 })
+    categories.value = (res.data.data as import('@/api/types').AdminCategory[]) || []
+  } catch {
+    categories.value = []
+  }
+}
+
 onMounted(() => {
   fetchPosts()
+  fetchCategories()
   if (route.query.post_id) {
     openEditById(route.query.post_id)
   }
@@ -373,6 +387,21 @@ watch(
                 </SelectContent>
               </Select>
               <p v-if="errors.type" class="text-xs text-destructive mt-1">{{ errors.type }}</p>
+            </div>
+
+            <div>
+              <label class="mb-1.5 block text-xs font-medium text-muted-foreground">{{ t('admin.posts.form.category') }}</label>
+              <Select v-model="form.category_id" :model-value="String(form.category_id)">
+                <SelectTrigger class="h-9 w-full">
+                  <SelectValue :placeholder="t('admin.posts.form.categoryPlaceholder')" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">{{ t('admin.posts.form.noCategory') }}</SelectItem>
+                  <SelectItem v-for="cat in categories" :key="cat.id" :value="String(cat.id)">
+                    {{ getLocalizedText(cat.name) }}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div class="col-span-1 md:col-span-2">

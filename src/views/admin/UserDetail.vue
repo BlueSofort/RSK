@@ -20,6 +20,7 @@ import {
   userStatusLabel,
 } from '@/utils/status'
 import { formatDate, formatMoney, getLocalizedText } from '@/utils/format'
+import { getImageUrl } from '@/utils/image'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -413,6 +414,24 @@ watch(
     </div>
 
     <div v-else class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <!-- Avatar Card -->
+      <Card class="rounded-lg border-border bg-background shadow-none md:col-span-3">
+        <CardContent class="p-4 flex items-center gap-4">
+          <img
+            v-if="user?.avatar"
+            :src="getImageUrl(user.avatar)"
+            class="w-16 h-16 rounded-full object-cover border-2 border-border bg-muted"
+          />
+          <div v-else class="w-16 h-16 rounded-full bg-muted flex items-center justify-center text-xl font-bold text-muted-foreground border-2 border-border">
+            {{ (user?.display_name || user?.email || '?')[0].toUpperCase() }}
+          </div>
+          <div>
+            <div class="text-lg font-semibold text-foreground">{{ user?.display_name || user?.email || '-' }}</div>
+            <div class="text-sm text-muted-foreground">ID: <IdCell :value="user?.id" /></div>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card class="rounded-lg border-border bg-background shadow-none">
         <CardContent class="p-3">
           <div class="text-xs text-muted-foreground">{{ t('admin.userDetail.fields.id') }}</div>

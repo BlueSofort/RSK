@@ -10,6 +10,7 @@ import type {
   AdminPromotion,
   AdminBanner,
   AdminPost,
+  AdminComment,
   AdminPaymentChannel,
   AdminUser,
   AdminSiteConnection,
@@ -273,6 +274,10 @@ export const adminAPI = {
   createPost: (data: Partial<AdminPost>) => api.post('/admin/posts', data),
   updatePost: (id: number, data: Partial<AdminPost>) => api.put(`/admin/posts/${id}`, data),
   deletePost: (id: number) => api.delete(`/admin/posts/${id}`),
+
+  // Comments
+  getComments: (params?: Record<string, unknown>) => api.get('/admin/comments', { params }),
+  deleteComment: (id: number) => api.delete(`/admin/comments/${id}`),
   getBanners: (params?: Record<string, unknown>) => api.get('/admin/banners', { params }),
   getBanner: (id: number) => api.get(`/admin/banners/${id}`),
   createBanner: (data: Partial<AdminBanner>) => api.post('/admin/banners', data),

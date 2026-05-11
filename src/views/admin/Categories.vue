@@ -37,6 +37,7 @@ const languages = computed(() => [
 const form = reactive({
   id: 0,
   parent_id: 0,
+  type: 'product',
   name: { 'zh-CN': '', 'zh-TW': '', 'en-US': '' } as LocalizedText,
   slug: '',
   icon: '',
@@ -85,10 +86,20 @@ const getCurrentLangName = () => {
   return languages.value.find((item) => item.code === currentLang.value)?.name || t('admin.common.lang.zhCN')
 }
 
+const filterType = ref((route.query.type as string) || '')
+
+// 侧边栏切换时同步 filterType
+watch(() => route.query.type, (val) => {
+  filterType.value = (val as string) || ''
+  fetchCategories()
+})
+
 const fetchCategories = async () => {
   loading.value = true
   try {
-    const res = await adminAPI.getCategories()
+    const params: Record<string, unknown> = {}
+    if (filterType.value) params.type = filterType.value
+    const res = await adminAPI.getCategories(params)
     categories.value = res.data.data || []
   } catch (err) {
     categories.value = []
@@ -104,6 +115,7 @@ const openCreateModal = () => {
   Object.assign(form, {
     id: 0,
     parent_id: 0,
+    type: filterType.value || 'product',
     name: { 'zh-CN': '', 'zh-TW': '', 'en-US': '' },
     slug: '',
     icon: '',
@@ -122,6 +134,7 @@ const openEditModal = (category: AdminCategory) => {
   Object.assign(form, {
     id: category.id,
     parent_id: category.parent_id || 0,
+    type: category.type || 'product',
     name,
     slug: category.slug,
     icon: category.icon || '',

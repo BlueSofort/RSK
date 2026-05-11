@@ -17,6 +17,7 @@ export type LocalizedText = Record<string, string>
 export interface AdminCategory {
   id: number
   parent_id: number
+  type: string
   slug: string
   name: LocalizedText
   icon: string
@@ -381,6 +382,7 @@ export interface AdminPost {
   id: number
   slug: string
   type: string
+  category_id?: number
   title: LocalizedText
   summary: LocalizedText
   content: LocalizedText
@@ -388,6 +390,22 @@ export interface AdminPost {
   is_published: boolean
   published_at?: string
   created_at: string
+}
+
+// --- Comment ---
+export interface AdminComment {
+  id: number
+  post_id: number
+  user_id: number
+  parent_id: number
+  content: string
+  status: string
+  user_name: string
+  user_avatar: string
+  user_email: string
+  post_title?: string
+  created_at: string
+  updated_at: string
 }
 
 // --- PaymentChannel ---
@@ -471,6 +489,7 @@ export interface AdminUser {
   email: string
   display_name: string
   nickname?: string
+  avatar?: string
   locale: string
   status: string
   member_level_id?: number

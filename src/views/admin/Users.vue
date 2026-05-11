@@ -7,6 +7,7 @@ import type { AdminUser, AdminMemberLevel } from '@/api/types'
 import IdCell from '@/components/IdCell.vue'
 import { userStatusClass, userStatusLabel } from '@/utils/status'
 import { formatDate, formatMoney, getLocalizedText } from '@/utils/format'
+import { getImageUrl } from '@/utils/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -314,6 +315,7 @@ onMounted(() => {
             <TableHead class="px-6 py-3">
               <input type="checkbox" :checked="allSelected" class="h-4 w-4 accent-primary" @change="toggleSelectAll" />
             </TableHead>
+            <TableHead class="px-3 py-3 w-10"></TableHead>
             <TableHead class="px-6 py-3">{{ t('admin.users.table.id') }}</TableHead>
             <TableHead class="px-6 py-3 min-w-[140px]">{{ t('admin.users.table.email') }}</TableHead>
             <TableHead class="px-6 py-3 min-w-[160px]">{{ t('admin.users.table.nickname') }}</TableHead>
@@ -329,16 +331,26 @@ onMounted(() => {
         </TableHeader>
         <TableBody class="divide-y divide-border">
           <TableRow v-if="loading">
-            <TableCell :colspan="12" class="p-0">
+            <TableCell :colspan="13" class="p-0">
               <TableSkeleton :columns="10" :rows="5" />
             </TableCell>
           </TableRow>
           <TableRow v-else-if="users.length === 0">
-            <TableCell colspan="12" class="px-6 py-8 text-center text-muted-foreground">{{ t('admin.users.empty') }}</TableCell>
+            <TableCell colspan="13" class="px-6 py-8 text-center text-muted-foreground">{{ t('admin.users.empty') }}</TableCell>
           </TableRow>
           <TableRow v-for="user in users" :key="user.id" class="hover:bg-muted/30">
             <TableCell class="px-6 py-4">
               <input type="checkbox" :value="user.id" v-model="selectedIds" class="h-4 w-4 accent-primary" />
+            </TableCell>
+            <TableCell class="px-3 py-4">
+              <img
+                v-if="user.avatar"
+                :src="getImageUrl(user.avatar)"
+                class="w-8 h-8 rounded-full object-cover bg-muted"
+              />
+              <div v-else class="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs text-muted-foreground">
+                {{ (user.display_name || user.email || '?')[0].toUpperCase() }}
+              </div>
             </TableCell>
             <TableCell class="px-6 py-4">
               <IdCell :value="user.id" />

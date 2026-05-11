@@ -121,7 +121,7 @@ const navGroups = computed<NavGroup[]>(() => {
       items: [
         {
           label: t('admin.navItems.productCategories'),
-          to: '/categories',
+          to: '/categories?type=product',
           icon: FolderTree,
           permission: 'GET:/admin/categories',
         },
@@ -248,6 +248,18 @@ const navGroups = computed<NavGroup[]>(() => {
           to: '/posts',
           icon: Newspaper,
           permission: 'GET:/admin/posts',
+        },
+        {
+          label: t('admin.navItems.postCategories'),
+          to: '/categories?type=post',
+          icon: FolderTree,
+          permission: 'GET:/admin/categories',
+        },
+        {
+          label: t('admin.navItems.comments'),
+          to: '/comments',
+          icon: ScrollText,
+          permission: 'GET:/admin/comments',
         },
         {
           label: t('admin.navItems.media'),

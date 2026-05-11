@@ -126,6 +126,12 @@ const routes = [
         meta: { permission: 'GET:/admin/posts' },
       },
       {
+        path: 'comments',
+        name: 'comments',
+        component: () => import('@/views/admin/Comments.vue'),
+        meta: { permission: 'GET:/admin/comments' },
+      },
+      {
         path: 'banners',
         name: 'banners',
         component: () => import('@/views/admin/Banners.vue'),
