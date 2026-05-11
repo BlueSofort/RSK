@@ -31,6 +31,8 @@ export type {
 
 // Re-export domain APIs
 export { productAPI, postAPI, bannerAPI, categoryAPI, memberLevelAPI } from './product'
+export { commentAPI } from './comment'
+export type { CommentItem } from './comment'
 export { userAuthAPI, captchaAPI, configAPI } from './auth'
 export { userProfileAPI } from './user'
 export { userOrderAPI, guestOrderAPI, paymentAPI } from './order'

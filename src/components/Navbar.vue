@@ -32,6 +32,15 @@
 
       <!-- Right Side Actions -->
       <div class="flex items-center shrink-0 space-x-2 lg:space-x-4">
+        <!-- Search (desktop) -->
+        <router-link to="/search"
+          class="hidden lg:flex theme-nav-link relative gap-2 px-3 min-w-[44px] min-h-[44px] items-center justify-center whitespace-nowrap">
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <span class="text-xs font-medium">{{ t('navbar.search') }}</span>
+        </router-link>
+
         <!-- Cart (desktop only, mobile has bottom nav) -->
         <router-link to="/cart"
           class="hidden lg:flex theme-nav-link relative gap-2 px-3 min-w-[44px] min-h-[44px] items-center justify-center whitespace-nowrap">

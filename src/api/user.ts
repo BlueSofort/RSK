@@ -20,4 +20,7 @@ export const userProfileAPI = {
     bindTelegramMiniApp: (data: TelegramMiniAppAuthPayload) =>
         userApi.post('/me/telegram/miniapp/bind', data),
     unbindTelegram: () => userApi.delete('/me/telegram/unbind'),
+    uploadAvatar: (formData: FormData) => userApi.post('/me/avatar', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    }),
 }

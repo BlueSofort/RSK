@@ -2,6 +2,7 @@ export interface UserProfileData {
     id: number
     email: string
     nickname: string
+    avatar?: string
     email_verified_at?: string | null
     locale: string
     member_level_id?: number
@@ -209,4 +210,17 @@ export interface CaptchaPayload {
     captcha_id?: string
     captcha_code?: string
     turnstile_token?: string
+}
+
+export interface CommentItem {
+    id: number
+    post_id: number
+    user_id: number
+    parent_id: number
+    content: string
+    status: string
+    user_name: string
+    user_avatar: string
+    created_at: string
+    updated_at: string
 }

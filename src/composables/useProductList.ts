@@ -112,7 +112,7 @@ export function useProductList(options: UseProductListOptions = {}) {
 
   const loadCategories = async () => {
     try {
-      const response = await categoryAPI.list()
+      const response = await categoryAPI.list({ type: 'product' })
       categories.value = response.data.data || []
     } catch (error) {
       console.error('Failed to load categories:', error)

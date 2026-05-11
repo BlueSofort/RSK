@@ -72,6 +72,126 @@
               <span class="font-medium">{{ backText }}</span>
             </router-link>
           </footer>
+
+          <!-- Comments Section -->
+          <section class="mt-16 pt-12 border-t theme-border">
+            <h2 class="text-2xl font-bold theme-text-primary mb-8">
+              {{ t('blogDetail.comments') }} <span v-if="commentsTotal > 0" class="text-lg theme-text-muted font-normal">({{ commentsTotal }})</span>
+            </h2>
+
+            <!-- Comment Form -->
+            <div v-if="isLoggedIn" class="mb-10">
+              <div v-if="replyTo" class="mb-3 flex items-center gap-2 text-sm theme-text-muted">
+                <span>{{ t('blogDetail.replyingTo') }} <strong>{{ replyTo.user_name }}</strong></span>
+                <button @click="cancelReply" class="theme-link-muted text-xs">&times; {{ t('blogDetail.cancelReply') }}</button>
+              </div>
+              <div class="flex gap-3">
+                <img
+                  :src="getImageUrl(currentUserAvatar)"
+                  class="w-10 h-10 rounded-full object-cover flex-shrink-0 bg-muted"
+                  @error="($event.target as HTMLImageElement).src = defaultAvatar"
+                />
+                <div class="flex-1 space-y-3">
+                  <textarea
+                    v-model="commentForm.content"
+                    :placeholder="t('blogDetail.commentPlaceholder')"
+                    rows="3"
+                    maxlength="100"
+                    class="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  ></textarea>
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs theme-text-muted">{{ commentForm.content.length }}/100</span>
+                    <button
+                      @click="submitComment"
+                      :disabled="!commentForm.content.trim() || submittingComment"
+                      class="px-5 py-2 rounded-full theme-btn-primary text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {{ submittingComment ? t('blogDetail.submitting') : t('blogDetail.submitComment') }}
+                    </button>
+                  </div>
+                  <p v-if="commentError" class="text-sm text-red-500">{{ commentError }}</p>
+                </div>
+              </div>
+            </div>
+            <div v-else class="mb-10 p-6 rounded-2xl theme-surface-muted text-center">
+              <p class="theme-text-muted text-sm">
+                <router-link to="/login" class="theme-link font-semibold">{{ t('blogDetail.loginToComment') }}</router-link>
+              </p>
+            </div>
+
+            <!-- Comment List -->
+            <div v-if="commentsLoading" class="text-center py-8">
+              <div class="inline-block w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+            </div>
+            <div v-else-if="comments.length === 0" class="text-center py-8 theme-text-muted text-sm">
+              {{ t('blogDetail.noComments') }}
+            </div>
+            <div v-else class="space-y-6">
+              <div v-for="comment in comments" :key="comment.id" class="group">
+                <!-- Parent Comment -->
+                <div class="flex gap-3">
+                  <img
+                    :src="getImageUrl(comment.user_avatar)"
+                    class="w-10 h-10 rounded-full object-cover flex-shrink-0 bg-muted"
+                    @error="($event.target as HTMLImageElement).src = defaultAvatar"
+                  />
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 mb-1">
+                      <span class="font-semibold text-sm theme-text-primary">{{ comment.user_name }}</span>
+                      <time class="text-xs theme-text-muted">{{ formatDate(comment.created_at) }}</time>
+                    </div>
+                    <p class="text-sm theme-text-secondary leading-relaxed break-words">{{ comment.content }}</p>
+                    <div class="flex items-center gap-3 mt-2">
+                      <button
+                        v-if="isLoggedIn"
+                        @click="replyToComment(comment)"
+                        class="text-xs theme-link-muted hover:underline"
+                      >{{ t('blogDetail.reply') }}</button>
+                      <button
+                        v-if="isLoggedIn && currentUserId === comment.user_id"
+                        @click="deleteComment(comment.id)"
+                        class="text-xs text-red-400 hover:text-red-600 hover:underline"
+                      >{{ t('blogDetail.delete') }}</button>
+                    </div>
+
+                    <!-- Replies -->
+                    <div v-if="repliesMap[comment.id]?.length" class="mt-4 ml-2 pl-4 border-l-2 theme-border space-y-4">
+                      <div v-for="reply in repliesMap[comment.id]" :key="reply.id" class="flex gap-3">
+                        <img
+                          :src="getImageUrl(reply.user_avatar)"
+                          class="w-8 h-8 rounded-full object-cover flex-shrink-0 bg-muted"
+                          @error="($event.target as HTMLImageElement).src = defaultAvatar"
+                        />
+                        <div class="flex-1 min-w-0">
+                          <div class="flex items-center gap-2 mb-1">
+                            <span class="font-semibold text-xs theme-text-primary">{{ reply.user_name }}</span>
+                            <time class="text-xs theme-text-muted">{{ formatDate(reply.created_at) }}</time>
+                          </div>
+                          <p class="text-sm theme-text-secondary leading-relaxed break-words">{{ reply.content }}</p>
+                          <button
+                            v-if="isLoggedIn && currentUserId === reply.user_id"
+                            @click="deleteComment(reply.id)"
+                            class="text-xs text-red-400 hover:text-red-600 hover:underline mt-1"
+                          >{{ t('blogDetail.delete') }}</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Load More -->
+              <div v-if="commentsHasMore" class="text-center pt-4">
+                <button
+                  @click="loadMoreComments"
+                  :disabled="commentsLoadingMore"
+                  class="px-6 py-2 rounded-full border theme-btn-secondary text-sm"
+                >
+                  {{ commentsLoadingMore ? t('blogDetail.loading') : t('blogDetail.loadMore') }}
+                </button>
+              </div>
+            </div>
+          </section>
         </div>
       </article>
 
@@ -96,21 +216,41 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, computed, reactive } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '../stores/app'
-import { postAPI } from '../api'
+import { useUserAuthStore } from '../stores/userAuth'
+import { postAPI, commentAPI, userProfileAPI } from '../api'
 import { getImageUrl } from '../utils/image'
 import { processHtmlForDisplay } from '../utils/content'
-import { debounceAsync } from '../utils/debounce'
 
 const route = useRoute()
 const { t } = useI18n()
 const appStore = useAppStore()
+const authStore = useUserAuthStore()
 
 const loading = ref(true)
 const post = ref<any>(null)
+
+// --- Comments ---
+const comments = ref<any[]>([])
+const repliesMap = ref<Record<number, any[]>>({})
+const commentsLoading = ref(false)
+const commentsLoadingMore = ref(false)
+const commentsPage = ref(1)
+const commentsTotal = ref(0)
+const commentsHasMore = ref(false)
+const submittingComment = ref(false)
+const commentError = ref('')
+const replyTo = ref<any>(null)
+const commentForm = reactive({ content: '' })
+
+const defaultAvatar = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect width="40" height="40" fill="#e5e7eb"/><text x="20" y="26" text-anchor="middle" font-size="18" fill="#9ca3af">?</text></svg>')
+
+const isLoggedIn = computed(() => authStore.isAuthenticated)
+const currentUserId = computed(() => authStore.user?.id)
+const currentUserAvatar = computed(() => authStore.user?.avatar || '')
 
 const getLocalizedText = (jsonData: any) => {
   if (!jsonData) return ''
@@ -140,6 +280,9 @@ const loadPost = async () => {
     const slug = route.params.slug as string
     const response = await postAPI.detail(slug)
     post.value = response.data.data || null
+    if (post.value) {
+      loadComments()
+    }
   } catch (error) {
     console.error('Failed to load post:', error)
     post.value = null
@@ -148,13 +291,95 @@ const loadPost = async () => {
   }
 }
 
-const debouncedLoadPost = debounceAsync(loadPost, 300)
+// --- Comment functions ---
+const loadComments = async (page = 1) => {
+  if (!post.value) return
+  const isFirstPage = page === 1
+  if (isFirstPage) {
+    commentsLoading.value = true
+    comments.value = []
+    repliesMap.value = {}
+  } else {
+    commentsLoadingMore.value = true
+  }
+  try {
+    const res = await commentAPI.list(post.value.id, { page, page_size: 10 })
+    const data = res.data
+    const list = data.data?.list || []
+    const replies = data.data?.replies || {}
+    const pagination = data.pagination || {}
+
+    if (isFirstPage) {
+      comments.value = list
+      repliesMap.value = replies
+    } else {
+      comments.value = [...comments.value, ...list]
+      Object.assign(repliesMap.value, replies)
+    }
+    commentsTotal.value = pagination.total || 0
+    commentsPage.value = page
+    commentsHasMore.value = page < (pagination.total_page || 1)
+  } catch (err) {
+    console.error('Failed to load comments:', err)
+  } finally {
+    commentsLoading.value = false
+    commentsLoadingMore.value = false
+  }
+}
+
+const loadMoreComments = () => {
+  loadComments(commentsPage.value + 1)
+}
+
+const submitComment = async () => {
+  if (!commentForm.content.trim() || !post.value) return
+  commentError.value = ''
+  submittingComment.value = true
+  try {
+    await commentAPI.create({
+      post_id: post.value.id,
+      parent_id: replyTo.value?.id || 0,
+      content: commentForm.content.trim(),
+    })
+    commentForm.content = ''
+    replyTo.value = null
+    loadComments() // reload
+  } catch (err: any) {
+    const msg = err?.response?.data?.message || err?.message || ''
+    if (msg.includes('sensitive')) {
+      commentError.value = msg
+    } else {
+      commentError.value = t('blogDetail.commentFailed')
+    }
+  } finally {
+    submittingComment.value = false
+  }
+}
+
+const replyToComment = (comment: any) => {
+  replyTo.value = comment
+  commentForm.content = ''
+  // scroll to form
+  const formEl = document.querySelector('textarea')
+  formEl?.focus()
+}
+
+const cancelReply = () => {
+  replyTo.value = null
+  commentForm.content = ''
+}
+
+const deleteComment = async (commentId: number) => {
+  if (!confirm(t('blogDetail.confirmDelete'))) return
+  try {
+    await commentAPI.delete(commentId)
+    loadComments()
+  } catch (err) {
+    console.error('Failed to delete comment:', err)
+  }
+}
 
 onMounted(() => {
   loadPost()
-})
-
-onUnmounted(() => {
-  debouncedLoadPost.cancel()
 })
 </script>

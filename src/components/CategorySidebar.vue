@@ -6,7 +6,7 @@
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
         d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
     </svg>
-    {{ t('products.filter') }}
+    {{ searchLabel || t('products.filter') }}
     <span v-if="selectedCategory" class="w-2 h-2 rounded-full theme-accent-stick"></span>
   </button>
 
@@ -37,7 +37,7 @@
         <div class="flex items-center justify-between mb-6">
           <span class="text-sm font-bold theme-text-primary flex items-center gap-2">
             <span class="w-1 h-5 theme-accent-stick rounded-full"></span>
-            {{ showSearch ? t('products.filter') : t('products.categories') }}
+            {{ showSearch ? (searchLabel || t('products.filter')) : (titleLabel || t('products.categories')) }}
           </span>
           <button @click="$emit('update:showDrawer', false)"
             class="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg theme-btn-neutral">
@@ -50,12 +50,12 @@
         <!-- Search in drawer (only for Products page mode) -->
         <div v-if="showSearch" class="mb-6">
           <label class="text-xs font-semibold uppercase tracking-wider theme-text-muted">
-            {{ t('products.searchLabel') }}
+            {{ searchLabel || t('products.searchLabel') }}
           </label>
           <div class="mt-3 flex items-center gap-2">
             <input :value="searchQuery" @input="$emit('update:searchQuery', ($event.target as HTMLInputElement).value)" type="text"
               class="min-w-0 flex-1 form-input"
-              :placeholder="t('products.searchPlaceholder')" />
+              :placeholder="searchPlaceholder || t('products.searchPlaceholder')" />
             <button v-if="searchQuery" type="button" @click="$emit('clearSearch')"
               class="shrink-0 whitespace-nowrap px-3 py-2.5 rounded-xl border theme-btn-secondary text-xs">
               {{ t('common.cancel') }}
@@ -63,7 +63,7 @@
           </div>
         </div>
 
-        <h2 v-if="showSearch" class="text-lg font-bold mb-4 theme-text-primary">{{ t('products.categories') }}</h2>
+        <h2 v-if="showSearch" class="text-lg font-bold mb-4 theme-text-primary">{{ titleLabel || t('products.categories') }}</h2>
 
         <!-- Category List -->
         <ul class="space-y-2">
@@ -73,7 +73,7 @@
               :class="selectedCategory === null
                 ? 'theme-btn-primary border border-transparent'
                 : 'border-transparent theme-text-secondary hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/5'">
-              {{ t('products.allCategories') }}
+              {{ allLabel || t('products.allCategories') }}
             </button>
           </li>
           <li v-for="group in categories" :key="group.id">
@@ -130,12 +130,12 @@
       <!-- Search (desktop, only for Products page) -->
       <div v-if="showSearch" :class="compact ? 'mb-4' : 'mb-6'">
         <label class="text-xs font-semibold uppercase tracking-wider theme-text-muted">
-          {{ t('products.searchLabel') }}
+            {{ searchLabel || t('products.searchLabel') }}
         </label>
         <div class="mt-3 flex items-center gap-2">
           <input :value="searchQuery" @input="$emit('update:searchQuery', ($event.target as HTMLInputElement).value)" type="text"
             class="min-w-0 flex-1 form-input"
-            :placeholder="t('products.searchPlaceholder')" />
+            :placeholder="searchPlaceholder || t('products.searchPlaceholder')" />
           <button v-if="searchQuery" type="button" @click="$emit('clearSearch')"
             class="shrink-0 whitespace-nowrap px-3 py-2.5 rounded-xl border theme-btn-secondary text-xs">
             {{ t('common.cancel') }}
@@ -146,7 +146,7 @@
       <h2 :class="compact ? 'text-base font-bold mb-4' : 'text-lg font-bold mb-6'"
         class="theme-text-primary flex items-center gap-2">
         <span class="w-1 h-5 theme-accent-stick rounded-full"></span>
-        {{ t('products.categories') }}
+        {{ titleLabel || t('products.categories') }}
       </h2>
 
       <ul :class="compact ? 'space-y-1.5' : 'space-y-2'">
@@ -159,7 +159,7 @@
                 ? 'theme-btn-primary border border-transparent'
                 : 'border-transparent theme-text-secondary hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/5'
             ]">
-            {{ t('products.allCategories') }}
+            {{ allLabel || t('products.allCategories') }}
           </button>
         </li>
         <li v-for="group in categories" :key="group.id">
@@ -242,6 +242,10 @@ defineProps<{
   compact?: boolean
   showSearch?: boolean
   searchQuery?: string
+  searchLabel?: string
+  searchPlaceholder?: string
+  allLabel?: string
+  titleLabel?: string
 }>()
 
 defineEmits<{

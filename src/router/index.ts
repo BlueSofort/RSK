@@ -243,6 +243,11 @@ const router = createRouter({
             component: () => import('../views/BlogDetail.vue'),
         },
         {
+            path: '/search',
+            name: 'search',
+            component: () => import('../views/Search.vue'),
+        },
+        {
             path: '/notice',
             name: 'notice',
             component: noticeViewLoader,
