@@ -1,0 +1,1 @@
+import{h as r}from"./index-Dvj3QB9y.js";import{r as s,f as u}from"./vendor-vue-i18n-D_t05dHq.js";const c=r("buyNow",()=>{const e=s(null),t=u(()=>e.value!==null);return{item:e,hasItem:t,setItem:o=>{e.value={...o}},clear:()=>{e.value=null}}});export{c as u};
