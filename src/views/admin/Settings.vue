@@ -196,6 +196,11 @@ const form = reactive({
   scripts: [] as SiteScriptItem[],
   footer_links: [] as FooterLinkItem[],
   template_mode: 'card' as 'card' | 'list',
+  footer: {
+    badge_text: 'RSK发卡小店',
+    status_text: '营业中',
+    launch_date: '2026-04-18',
+  },
 })
 
 const smtpData = reactive({
@@ -395,6 +400,13 @@ const fetchSettings = async () => {
       const footerLinks = normalizeFooterLinks(data.footer_links)
       form.footer_links.splice(0, form.footer_links.length, ...footerLinks)
 
+      const footer = data.footer as Record<string, unknown> | undefined
+      if (footer) {
+        form.footer.badge_text = String(footer.badge_text || 'RSK发卡小店')
+        form.footer.status_text = String(footer.status_text || '营业中')
+        form.footer.launch_date = String(footer.launch_date || '2026-04-18')
+      }
+
       const rawTemplateMode = String(data.template_mode || 'card').trim()
       form.template_mode = rawTemplateMode === 'list' ? 'list' : 'card'
     }
@@ -540,6 +552,7 @@ const saveSiteSettings = async () => {
       legal: form.legal,
       scripts: form.scripts,
       footer_links: form.footer_links,
+      footer: form.footer,
       template_mode: form.template_mode,
     },
   }
@@ -876,6 +889,27 @@ onMounted(() => {
             <Button type="button" size="sm" variant="destructive" class="w-full sm:w-auto" @click="removeFooterLinkItem(index)">
               {{ t('admin.common.delete') }}
             </Button>
+          </div>
+        </div>
+      </div>
+
+      <div class="rounded-xl border border-border bg-card">
+        <div class="border-b border-border bg-muted/40 px-6 py-4">
+          <h2 class="text-lg font-semibold">{{ t('admin.settings.footer.title') }}</h2>
+          <p class="mt-1 text-xs text-muted-foreground">{{ t('admin.settings.footer.subtitle') }}</p>
+        </div>
+        <div class="grid grid-cols-1 gap-6 p-6 md:grid-cols-3">
+          <div class="space-y-2">
+            <label class="text-xs font-medium text-muted-foreground">{{ t('admin.settings.footer.badgeText') }}</label>
+            <Input v-model="form.footer.badge_text" :placeholder="t('admin.settings.footer.badgeTextPlaceholder')" />
+          </div>
+          <div class="space-y-2">
+            <label class="text-xs font-medium text-muted-foreground">{{ t('admin.settings.footer.statusText') }}</label>
+            <Input v-model="form.footer.status_text" :placeholder="t('admin.settings.footer.statusTextPlaceholder')" />
+          </div>
+          <div class="space-y-2">
+            <label class="text-xs font-medium text-muted-foreground">{{ t('admin.settings.footer.launchDate') }}</label>
+            <input type="date" v-model="form.footer.launch_date" class="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" />
           </div>
         </div>
       </div>
