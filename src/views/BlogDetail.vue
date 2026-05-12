@@ -306,8 +306,18 @@ const loadComments = async (page = 1) => {
     const res = await commentAPI.list(post.value.id, { page, page_size: 10 })
     const data = res.data
     const list = data.data?.list || []
-    const replies = data.data?.replies || {}
+    const rawReplies = data.data?.replies || []
     const pagination = data.pagination || {}
+
+    // Group flat replies array by parent_id
+    const replies: Record<number, any[]> = {}
+    if (Array.isArray(rawReplies)) {
+      for (const r of rawReplies) {
+        const pid = r.parent_id
+        if (!replies[pid]) replies[pid] = []
+        replies[pid].push(r)
+      }
+    }
 
     if (isFirstPage) {
       comments.value = list
@@ -345,9 +355,9 @@ const submitComment = async () => {
     replyTo.value = null
     loadComments() // reload
   } catch (err: any) {
-    const msg = err?.response?.data?.message || err?.message || ''
-    if (msg.includes('sensitive')) {
-      commentError.value = msg
+    const sensitiveWord = err?.responseData?.sensitive_word || ''
+    if (sensitiveWord) {
+      commentError.value = t('blogDetail.commentSensitive', { word: sensitiveWord })
     } else {
       commentError.value = t('blogDetail.commentFailed')
     }
