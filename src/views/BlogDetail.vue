@@ -221,7 +221,7 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '../stores/app'
 import { useUserAuthStore } from '../stores/userAuth'
-import { postAPI, commentAPI, userProfileAPI } from '../api'
+import { postAPI, commentAPI } from '../api'
 import { getImageUrl } from '../utils/image'
 import { processHtmlForDisplay } from '../utils/content'
 

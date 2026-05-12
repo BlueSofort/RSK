@@ -131,8 +131,7 @@ const handleAvatarChange = async (e: Event) => {
   const formData = new FormData()
   formData.append('avatar', file)
   try {
-    const res = await userProfileAPI.uploadAvatar(formData)
-    const avatarUrl = res.data?.data?.avatar || ''
+    await userProfileAPI.uploadAvatar(formData)
     // Refresh profile to get updated avatar
     await userProfileStore.loadProfile()
     profileAlert.value = {
