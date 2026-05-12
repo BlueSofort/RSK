@@ -101,14 +101,14 @@
               <span class="mr-1 flex items-center justify-center text-[10px]">
                 🍰
               </span>
-              <span class="text-[10px] font-bold tracking-tight">RSK发卡小店</span>
+              <span class="text-[10px] font-bold tracking-tight">{{ config?.footer?.badge_text || 'RSK发卡小店' }}</span>
             </div>
             
             <!-- Right Badge: Status Bubble -->
             <div class="relative flex items-center bg-[#2d2d2d] dark:bg-[#f5f5f5] text-white dark:text-[#1a1a1a] px-1.5 py-0.5 rounded shadow-md border border-white/10 dark:border-black/5 transition-colors duration-300">
               <!-- Bubble Arrow pointing left -->
               <div class="absolute -left-0.5 top-1/2 -translate-y-1/2 w-1 h-1 bg-[#2d2d2d] dark:bg-[#f5f5f5] rotate-45 border-l border-b border-white/10 dark:border-black/5"></div>
-              <span class="relative z-10 text-[10px] font-bold">营业中</span>
+              <span class="relative z-10 text-[10px] font-bold">{{ config?.footer?.status_text || '营业中' }}</span>
             </div>
           </div>
 
@@ -135,12 +135,25 @@ const appStore = useAppStore()
 const config = computed(() => appStore.config)
 
 // Uptime Clock Logic
-const launchDate = new Date('2026-04-18T00:00:00') // 运行起始日期
+const DEFAULT_LAUNCH_DATE = new Date('2026-04-18T00:00:00')
+
+const parseLaunchDate = (raw: unknown): Date => {
+  if (!raw || typeof raw !== 'string') return DEFAULT_LAUNCH_DATE
+  const d = new Date(raw + 'T00:00:00')
+  return isNaN(d.getTime()) ? DEFAULT_LAUNCH_DATE : d
+}
+
+const launchDate = computed(() => parseLaunchDate(config.value?.footer?.launch_date))
 const uptimeDisplay = ref('')
 
 const updateUptime = () => {
   const now = new Date()
-  const diff = now.getTime() - launchDate.getTime()
+  const ts = launchDate.value.getTime()
+  if (isNaN(ts)) {
+    uptimeDisplay.value = '--'
+    return
+  }
+  const diff = now.getTime() - ts
 
   const years = Math.floor(diff / (1000 * 60 * 60 * 24 * 365))
   const days = Math.floor((diff % (1000 * 60 * 60 * 24 * 365)) / (1000 * 60 * 60 * 24))
