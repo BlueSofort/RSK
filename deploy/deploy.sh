@@ -11,22 +11,24 @@ TARGET="${1:-all}"
 pull() {
   local dir="$1"
   echo "=== Pulling $dir ==="
-  cd "/opt/rsk/$dir"
-  git pull
+  (cd "/opt/rsk/$dir" && git pull)
 }
 
 build_api() {
   echo "=== Building api ==="
+  cd /opt/rsk
   docker build --pull -t rsk-api:latest -f RSK-main/Dockerfile RSK-main/
 }
 
 build_user() {
   echo "=== Building user ==="
+  cd /opt/rsk
   docker build -t rsk-user:latest -f RSK-user/Dockerfile.prod RSK-user/
 }
 
 build_admin() {
   echo "=== Building admin ==="
+  cd /opt/rsk
   docker build -t rsk-admin:latest -f RSK-admin/Dockerfile.prod RSK-admin/
 }
 
