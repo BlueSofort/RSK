@@ -116,12 +116,14 @@ func (s *UserAuthService) UpdateProfile(userID uint, nickname, locale, avatar *s
 	if nickname != nil {
 		trimmed := strings.TrimSpace(*nickname)
 		if trimmed != "" {
-			// 昵称冷却：30 天内只能改一次
-			if user.NicknameUpdatedAt != nil && now.Sub(*user.NicknameUpdatedAt) < 30*24*time.Hour {
-				return nil, ErrNicknameCooldown
+			// 昵称冷却：30 天内只能改一次（值未变则跳过）
+			if trimmed != user.DisplayName {
+				if user.NicknameUpdatedAt != nil && now.Sub(*user.NicknameUpdatedAt) < 30*24*time.Hour {
+					return nil, ErrNicknameCooldown
+				}
+				user.NicknameUpdatedAt = &now
 			}
 			user.DisplayName = trimmed
-			user.NicknameUpdatedAt = &now
 			updated = true
 		}
 	}
