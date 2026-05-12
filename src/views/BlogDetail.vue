@@ -109,7 +109,6 @@
                       {{ submittingComment ? t('blogDetail.submitting') : t('blogDetail.submitComment') }}
                     </button>
                   </div>
-                  <p v-if="commentError" class="text-sm text-red-500">{{ commentError }}</p>
                 </div>
               </div>
             </div>
@@ -224,6 +223,7 @@ import { useUserAuthStore } from '../stores/userAuth'
 import { postAPI, commentAPI } from '../api'
 import { getImageUrl } from '../utils/image'
 import { processHtmlForDisplay } from '../utils/content'
+import { toast } from '../composables/useToast'
 
 const route = useRoute()
 const { t } = useI18n()
@@ -242,7 +242,6 @@ const commentsPage = ref(1)
 const commentsTotal = ref(0)
 const commentsHasMore = ref(false)
 const submittingComment = ref(false)
-const commentError = ref('')
 const replyTo = ref<any>(null)
 const commentForm = reactive({ content: '' })
 
@@ -263,6 +262,13 @@ const formatDate = (dateString: any) => {
   const s = String(dateString)
   return s.length >= 10 ? s.substring(0, 10) : s
 }
+
+// Flatten nested user object to flat fields expected by template
+const flattenUser = (item: any) => ({
+  ...item,
+  user_name: item.user?.display_name || '',
+  user_avatar: item.user?.avatar || '',
+})
 
 const backLink = computed(() => {
   if (!post.value) return '/blog'
@@ -305,8 +311,8 @@ const loadComments = async (page = 1) => {
   try {
     const res = await commentAPI.list(post.value.id, { page, page_size: 10 })
     const data = res.data
-    const list = data.data?.list || []
-    const rawReplies = data.data?.replies || []
+    const list = (data.data?.list || []).map(flattenUser)
+    const rawReplies = (data.data?.replies || []).map(flattenUser)
     const pagination = data.pagination || {}
 
     // Group flat replies array by parent_id
@@ -343,7 +349,6 @@ const loadMoreComments = () => {
 
 const submitComment = async () => {
   if (!commentForm.content.trim() || !post.value) return
-  commentError.value = ''
   submittingComment.value = true
   try {
     await commentAPI.create({
@@ -357,9 +362,9 @@ const submitComment = async () => {
   } catch (err: any) {
     const sensitiveWord = err?.responseData?.sensitive_word || ''
     if (sensitiveWord) {
-      commentError.value = t('blogDetail.commentSensitive', { word: sensitiveWord })
+      toast.error(t('blogDetail.commentSensitive', { word: sensitiveWord }))
     } else {
-      commentError.value = t('blogDetail.commentFailed')
+      toast.error(err?.message || t('blogDetail.commentFailed'))
     }
   } finally {
     submittingComment.value = false

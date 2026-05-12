@@ -10,10 +10,6 @@
       </span>
     </div>
 
-    <div v-if="profileAlert" class="mb-5 rounded-xl border px-4 py-3 text-sm shadow-sm" :class="pageAlertClass(profileAlert.level)">
-      {{ profileAlert.message }}
-    </div>
-
     <form class="space-y-6" @submit.prevent="handleSaveProfile">
       <!-- Avatar Section -->
       <div class="flex items-center gap-5 pb-5 border-b border-gray-200/70 dark:border-white/10">
@@ -88,9 +84,9 @@
 <script setup lang="ts">
 import { reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { pageAlertClass, type PageAlert } from '../../utils/alerts'
 import { useUserProfileStore } from '../../stores/userProfile'
 import { userProfileAPI } from '../../api'
+import { toast } from '../../composables/useToast'
 
 const { t } = useI18n()
 const userProfileStore = useUserProfileStore()
@@ -100,7 +96,6 @@ const profileForm = reactive({
   locale: 'zh-CN',
 })
 
-const profileAlert = ref<PageAlert | null>(null)
 const avatarPreview = ref('')
 const avatarUploading = ref(false)
 
@@ -134,15 +129,9 @@ const handleAvatarChange = async (e: Event) => {
     await userProfileAPI.uploadAvatar(formData)
     // Refresh profile to get updated avatar
     await userProfileStore.loadProfile()
-    profileAlert.value = {
-      level: 'success',
-      message: t('personalCenter.profile.avatarSuccess'),
-    }
-  } catch {
-    profileAlert.value = {
-      level: 'error',
-      message: t('personalCenter.profile.avatarFailed'),
-    }
+    toast.success(t('personalCenter.profile.avatarSuccess'))
+  } catch (err: any) {
+    toast.error(err?.message || t('personalCenter.profile.avatarFailed'))
     avatarPreview.value = ''
   } finally {
     avatarUploading.value = false
@@ -151,23 +140,16 @@ const handleAvatarChange = async (e: Event) => {
 }
 
 const handleSaveProfile = async () => {
-  profileAlert.value = null
   const payload = {
     nickname: profileForm.nickname.trim(),
     locale: profileForm.locale,
   }
   const ok = await userProfileStore.saveProfile(payload)
   if (!ok) {
-    profileAlert.value = {
-      level: 'error',
-      message: userProfileStore.profileError || t('personalCenter.common.saveFailed'),
-    }
+    toast.error(userProfileStore.profileError || t('personalCenter.common.saveFailed'))
     return
   }
-  profileAlert.value = {
-    level: 'success',
-    message: t('personalCenter.profile.saveSuccess'),
-  }
+  toast.success(t('personalCenter.profile.saveSuccess'))
 }
 
 watch(
