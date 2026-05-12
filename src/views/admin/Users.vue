@@ -349,7 +349,7 @@ onMounted(() => {
                 class="w-8 h-8 rounded-full object-cover bg-muted"
               />
               <div v-else class="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs text-muted-foreground">
-                {{ (user.display_name || user.email || '?')[0].toUpperCase() }}
+                {{ (user.display_name || user.email || '?')![0].toUpperCase() }}
               </div>
             </TableCell>
             <TableCell class="px-6 py-4">

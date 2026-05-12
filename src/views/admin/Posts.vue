@@ -391,7 +391,7 @@ watch(
 
             <div>
               <label class="mb-1.5 block text-xs font-medium text-muted-foreground">{{ t('admin.posts.form.category') }}</label>
-              <Select v-model="form.category_id" :model-value="String(form.category_id)">
+              <Select v-model="form.category_id">
                 <SelectTrigger class="h-9 w-full">
                   <SelectValue :placeholder="t('admin.posts.form.categoryPlaceholder')" />
                 </SelectTrigger>

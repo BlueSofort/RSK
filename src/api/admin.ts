@@ -10,7 +10,6 @@ import type {
   AdminPromotion,
   AdminBanner,
   AdminPost,
-  AdminComment,
   AdminPaymentChannel,
   AdminUser,
   AdminSiteConnection,
