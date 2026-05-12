@@ -60,7 +60,7 @@ case "$TARGET" in
 esac
 
 echo "=== Restarting ==="
-docker-compose up -d --remove-orphans
+docker compose up -d --remove-orphans
 
 echo "=== Cleaning old images ==="
 docker image prune -f
