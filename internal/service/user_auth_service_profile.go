@@ -111,10 +111,17 @@ func (s *UserAuthService) UpdateProfile(userID uint, nickname, locale, avatar *s
 	}
 
 	updated := false
+	now := time.Now()
+
 	if nickname != nil {
 		trimmed := strings.TrimSpace(*nickname)
 		if trimmed != "" {
+			// 昵称冷却：30 天内只能改一次
+			if user.NicknameUpdatedAt != nil && now.Sub(*user.NicknameUpdatedAt) < 30*24*time.Hour {
+				return nil, ErrNicknameCooldown
+			}
 			user.DisplayName = trimmed
+			user.NicknameUpdatedAt = &now
 			updated = true
 		}
 	}
@@ -128,7 +135,12 @@ func (s *UserAuthService) UpdateProfile(userID uint, nickname, locale, avatar *s
 	}
 
 	if avatar != nil {
+		// 头像冷却：24 小时内只能改一次
+		if user.AvatarUpdatedAt != nil && now.Sub(*user.AvatarUpdatedAt) < 24*time.Hour {
+			return nil, ErrAvatarCooldown
+		}
 		user.Avatar = strings.TrimSpace(*avatar)
+		user.AvatarUpdatedAt = &now
 		updated = true
 	}
 
@@ -136,7 +148,7 @@ func (s *UserAuthService) UpdateProfile(userID uint, nickname, locale, avatar *s
 		return nil, ErrProfileEmpty
 	}
 
-	user.UpdatedAt = time.Now()
+	user.UpdatedAt = now
 	if err := s.userRepo.Update(user); err != nil {
 		return nil, err
 	}

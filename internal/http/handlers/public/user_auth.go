@@ -685,6 +685,10 @@ func (h *Handler) UpdateUserProfile(c *gin.Context) {
 			shared.RespondError(c, response.CodeBadRequest, "error.profile_empty", nil)
 		case errors.Is(err, service.ErrNotFound):
 			shared.RespondError(c, response.CodeNotFound, "error.user_not_found", nil)
+		case errors.Is(err, service.ErrNicknameCooldown):
+			shared.RespondError(c, response.CodeTooManyRequests, "error.nickname_cooldown", nil)
+		case errors.Is(err, service.ErrAvatarCooldown):
+			shared.RespondError(c, response.CodeTooManyRequests, "error.avatar_cooldown", nil)
 		default:
 			shared.RespondError(c, response.CodeInternal, "error.user_update_failed", err)
 		}

@@ -1,10 +1,12 @@
 package public
 
 import (
+	"errors"
 	"path/filepath"
 
 	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/http/response"
+	"github.com/dujiao-next/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
@@ -49,6 +51,10 @@ func (h *Handler) UploadAvatar(c *gin.Context) {
 	// 更新用户头像字段
 	_, err = h.UserAuthService.UpdateProfile(userID, nil, nil, &avatarURL)
 	if err != nil {
+		if errors.Is(err, service.ErrAvatarCooldown) {
+			shared.RespondError(c, response.CodeTooManyRequests, "error.avatar_cooldown", nil)
+			return
+		}
 		shared.RespondError(c, response.CodeInternal, "error.profile_update_failed", err)
 		return
 	}

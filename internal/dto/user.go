@@ -11,6 +11,9 @@ type UserProfileResp struct {
 	ID                 uint         `json:"id"`
 	Email              string       `json:"email"`
 	Nickname           string       `json:"nickname"`
+	Avatar             string       `json:"avatar"`
+	AvatarUpdatedAt    *time.Time   `json:"avatar_updated_at"`
+	NicknameUpdatedAt  *time.Time   `json:"nickname_updated_at"`
 	EmailVerifiedAt    *time.Time   `json:"email_verified_at"`
 	Locale             string       `json:"locale"`
 	MemberLevelID      uint         `json:"member_level_id"`
@@ -29,6 +32,9 @@ func NewUserProfileResp(user *models.User, emailMode, passwordMode string) UserP
 		ID:                 user.ID,
 		Email:              user.Email,
 		Nickname:           user.DisplayName,
+		Avatar:             user.Avatar,
+		AvatarUpdatedAt:    user.AvatarUpdatedAt,
+		NicknameUpdatedAt:  user.NicknameUpdatedAt,
 		EmailVerifiedAt:    user.EmailVerifiedAt,
 		Locale:             user.Locale,
 		MemberLevelID:      user.MemberLevelID,

@@ -183,4 +183,8 @@ var (
 	ErrCommentNotFound                     = errors.New("comment not found")
 	ErrCommentNotOwner                     = errors.New("comment not owned by user")
 	ErrCommentRateLimited                  = errors.New("comment rate limited")
+
+	// 资料修改冷却
+	ErrAvatarCooldown   = errors.New("avatar update too frequent")
+	ErrNicknameCooldown = errors.New("nickname update too frequent")
 )
