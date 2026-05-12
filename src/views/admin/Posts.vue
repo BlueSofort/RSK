@@ -183,7 +183,7 @@ const openEditById = async (rawId: unknown) => {
 
 const fetchCategories = async () => {
   try {
-    const res = await adminAPI.getCategories({ page: 1, page_size: 100 })
+    const res = await adminAPI.getCategories({ type: 'post', page: 1, page_size: 100 })
     categories.value = (res.data.data as import('@/api/types').AdminCategory[]) || []
   } catch {
     categories.value = []
