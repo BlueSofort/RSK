@@ -23,6 +23,9 @@ const loading = ref(true)
 const users = ref<AdminUser[]>([])
 const selectedIds = ref<number[]>([])
 const adminPath = import.meta.env.VITE_ADMIN_PATH || ''
+
+const userInitial = (u: any): string =>
+  String((u.display_name || u.email || '?')).charAt(0).toUpperCase()
 const pagination = ref({
   page: 1,
   page_size: 20,
@@ -349,7 +352,7 @@ onMounted(() => {
                 class="w-8 h-8 rounded-full object-cover bg-muted"
               />
               <div v-else class="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs text-muted-foreground">
-                {{ (user.display_name || user.email || '?')![0].toUpperCase() }}
+                {{ userInitial(user) }}
               </div>
             </TableCell>
             <TableCell class="px-6 py-4">

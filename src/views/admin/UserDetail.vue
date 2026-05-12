@@ -41,6 +41,9 @@ interface UserDetailCouponUsage {
 const user = ref<(AdminUser & Record<string, unknown>) | null>(null)
 const userError = ref('')
 
+const avatarInitial = (u: any): string =>
+  String((u?.display_name || u?.email || '?')).charAt(0).toUpperCase()
+
 const activeTab = ref<'orders' | 'payments' | 'coupons' | 'wallet'>('orders')
 const tabs = computed<Array<{ key: 'orders' | 'payments' | 'coupons' | 'wallet'; label: string }>>(() => [
   { key: 'orders', label: t('admin.userDetail.tabs.orders') },
@@ -423,7 +426,7 @@ watch(
             class="w-16 h-16 rounded-full object-cover border-2 border-border bg-muted"
           />
           <div v-else class="w-16 h-16 rounded-full bg-muted flex items-center justify-center text-xl font-bold text-muted-foreground border-2 border-border">
-            {{ (user?.display_name || user?.email || '?')![0].toUpperCase() }}
+            {{ avatarInitial(user) }}
           </div>
           <div>
             <div class="text-lg font-semibold text-foreground">{{ user?.display_name || user?.email || '-' }}</div>
