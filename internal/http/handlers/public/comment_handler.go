@@ -2,10 +2,13 @@ package public
 
 import (
 	"errors"
+	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/http/response"
+	"github.com/dujiao-next/internal/i18n"
 	"github.com/dujiao-next/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -111,9 +114,31 @@ var commentErrorRules = []mappedHandlerError{
 func respondCommentError(c *gin.Context, err error) {
 	for _, rule := range commentErrorRules {
 		if errors.Is(err, rule.target) {
+			// 敏感词错误：把命中的词也返回给前端
+			if errors.Is(err, service.ErrCommentSensitiveWords) {
+				word := extractSensitiveWord(err)
+				locale := i18n.ResolveLocale(c)
+				msg := i18n.T(locale, rule.key)
+				c.JSON(http.StatusOK, response.Response{
+					StatusCode: rule.code,
+					Msg:        msg,
+					Data:       gin.H{"sensitive_word": word},
+				})
+				return
+			}
 			shared.RespondError(c, rule.code, rule.key, nil)
 			return
 		}
 	}
 	shared.RespondError(c, response.CodeInternal, "error.comment_create_failed", err)
+}
+
+// extractSensitiveWord 从 ErrCommentSensitiveWords 错误信息中提取敏感词
+// 错误格式: "comment contains sensitive words: 某某词"
+func extractSensitiveWord(err error) string {
+	parts := strings.SplitN(err.Error(), ": ", 2)
+	if len(parts) == 2 {
+		return strings.TrimSpace(parts[1])
+	}
+	return ""
 }
