@@ -15,9 +15,9 @@ pull() {
 }
 
 build_api() {
-  echo "=== Building api ==="
+  echo "=== Building api (pre-built binary) ==="
   cd /opt/rsk
-  docker build --pull -t rsk-api:latest -f RSK-main/Dockerfile RSK-main/
+  docker build -t rsk-api:latest -f RSK-main/Dockerfile RSK-main/
 }
 
 build_user() {
