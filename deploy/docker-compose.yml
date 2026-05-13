@@ -7,7 +7,7 @@ services:
     container_name: rsk-api
     restart: unless-stopped
     volumes:
-      - /opt/dujiao-next/config.yml:/app/config.yml:ro
+      - /opt/dujiao-next/config/config.yml:/app/config.yml:ro
       - /opt/dujiao-next/.env:/app/.env:ro
       - /opt/dujiao-next/data/db:/app/db
       - /opt/dujiao-next/data/uploads:/app/uploads
