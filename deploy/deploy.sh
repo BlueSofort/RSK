@@ -8,6 +8,12 @@ set -euo pipefail
 cd /opt/rsk
 TARGET="${1:-all}"
 
+setup() {
+  echo "=== Ensuring required symlinks ==="
+  ln -sf RSK-main/deploy/docker-compose.yml /opt/rsk/docker-compose.yml
+  ln -sf RSK-main/deploy/nginx.conf /opt/rsk/nginx.conf
+}
+
 pull() {
   local dir="$1"
   echo "=== Pulling $dir ==="
@@ -34,6 +40,7 @@ build_admin() {
 
 case "$TARGET" in
   all)
+    setup
     pull RSK-main
     pull RSK-user
     pull RSK-admin
@@ -42,14 +49,17 @@ case "$TARGET" in
     build_admin
     ;;
   api)
+    setup
     pull RSK-main
     build_api
     ;;
   user)
+    setup
     pull RSK-user
     build_user
     ;;
   admin)
+    setup
     pull RSK-admin
     build_admin
     ;;
