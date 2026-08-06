@@ -52,7 +52,7 @@ const form = reactive({
   summary: { 'zh-CN': '', 'zh-TW': '', 'en-US': '' } as Record<string, string>,
   content: { 'zh-CN': '', 'zh-TW': '', 'en-US': '' } as Record<string, string>,
   type: 'blog',
-  category_id: 0,
+  category_id: '0',
   thumbnail: '',
   is_published: true,
 })
@@ -111,7 +111,7 @@ const openCreateModal = () => {
     summary: { 'zh-CN': '', 'zh-TW': '', 'en-US': '' },
     content: { 'zh-CN': '', 'zh-TW': '', 'en-US': '' },
     type: currentTab.value,
-    category_id: 0,
+    category_id: '0',
     thumbnail: '',
     is_published: true,
   })
@@ -128,7 +128,7 @@ const openEditModal = (post: AdminPost) => {
     summary: post.summary || { 'zh-CN': '', 'zh-TW': '', 'en-US': '' },
     content: post.content || { 'zh-CN': '', 'zh-TW': '', 'en-US': '' },
     type: post.type,
-    category_id: post.category_id || 0,
+    category_id: String(post.category_id || 0),
     thumbnail: post.thumbnail,
     is_published: post.is_published,
   })
