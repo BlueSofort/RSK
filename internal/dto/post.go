@@ -11,6 +11,7 @@ type PostResp struct {
 	ID          uint        `json:"id"`
 	Slug        string      `json:"slug"`
 	Type        string      `json:"type"`
+	CategoryID  uint        `json:"category_id"`
 	Title       models.JSON `json:"title"`
 	Summary     models.JSON `json:"summary"`
 	Content     models.JSON `json:"content"`
@@ -24,6 +25,7 @@ func NewPostResp(p *models.Post) PostResp {
 		ID:          p.ID,
 		Slug:        p.Slug,
 		Type:        p.Type,
+		CategoryID:  p.CategoryID,
 		Title:       p.TitleJSON,
 		Summary:     p.SummaryJSON,
 		Content:     p.ContentJSON,
