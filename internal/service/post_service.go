@@ -36,12 +36,13 @@ var allowedPostTypes = map[string]struct{}{
 }
 
 // ListPublic 获取公开文章列表
-func (s *PostService) ListPublic(postType string, categoryID uint, page, pageSize int) ([]models.Post, int64, error) {
+func (s *PostService) ListPublic(postType string, categoryID uint, search string, page, pageSize int) ([]models.Post, int64, error) {
 	filter := repository.PostListFilter{
 		Page:          page,
 		PageSize:      pageSize,
 		Type:          postType,
 		CategoryID:    categoryID,
+		Search:        search,
 		OnlyPublished: true,
 		OrderBy:       "published_at DESC, created_at DESC",
 	}

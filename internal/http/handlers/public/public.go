@@ -646,8 +646,9 @@ func (h *Handler) GetPosts(c *gin.Context) {
 	// 获取类型参数
 	postType := c.Query("type") // blog 或 notice
 	categoryID, _ := strconv.Atoi(c.DefaultQuery("category_id", "0"))
+	search := strings.TrimSpace(c.Query("search"))
 
-	posts, total, err := h.PostService.ListPublic(postType, uint(categoryID), page, pageSize)
+	posts, total, err := h.PostService.ListPublic(postType, uint(categoryID), search, page, pageSize)
 	if err != nil {
 		shared.RespondError(c, response.CodeInternal, "error.post_fetch_failed", err)
 		return
