@@ -206,8 +206,8 @@ const loadPosts = async () => {
       page: currentPage.value,
       page_size: pageSize,
     }
-    if (selectedCategory.value?.id) {
-      params.category_id = selectedCategory.value.id
+    if (selectedCategory.value) {
+      params.category_id = selectedCategory.value
     }
     if (searchQuery.value.trim()) {
       params.search = searchQuery.value.trim()
